@@ -56,6 +56,7 @@
 #include "gromacs/essentialdynamics/edsam.h"
 #include "gromacs/ewald/pme.h"
 #include "gromacs/ewald/pme-load-balancing.h"
+#include "gromacs/fda/FDA.h"
 #include "gromacs/fileio/trxio.h"
 #include "gromacs/gmxlib/network.h"
 #include "gromacs/gmxlib/nrnb.h"
@@ -431,11 +432,15 @@ double gmx::do_md(FILE *fplog, t_commrec *cr, const gmx::MDLogger &mdlog,
     }
     else
     {
+        fda::FDASettings fda_settings = fr->fda->get_settings();
+        top = gmx_mtop_generate_local_top(top_global, ir->efep != efepNO, &fda_settings);
+
         state_change_natoms(state_global, state_global->natoms);
         /* We need to allocate one element extra, since we might use
          * (unaligned) 4-wide SIMD loads to access rvec entries.
          */
         f.resize(state_global->natoms + 1);
+
         /* Copy the pointer to the global state */
         state = state_global;
 
@@ -1286,6 +1291,10 @@ double gmx::do_md(FILE *fplog, t_commrec *cr, const gmx::MDLogger &mdlog,
 
         /* ########  END FIRST UPDATE STEP  ############## */
         /* ########  If doing VV, we now have v(dt) ###### */
+
+        // FDA
+        fr->fda->save_and_write_scalar_time_averages(state->x, top_global);
+
         if (bDoExpanded)
         {
             /* perform extended ensemble sampling in lambda - we don't
@@ -1854,6 +1863,9 @@ double gmx::do_md(FILE *fplog, t_commrec *cr, const gmx::MDLogger &mdlog,
     {
         close_trx(status);
     }
+
+    // FDA
+    fr->fda->write_scalar_time_averages();
 
     if (!(cr->duty & DUTY_PME))
     {
