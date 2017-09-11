@@ -99,12 +99,12 @@ gmx_nb_generic_kernel(t_nblist *                nlist,
     gmx_bool      bExactElecCutoff, bExactVdwCutoff, bExactCutoff;
     gmx_bool      do_tab;
 
-    FDA * fda;
+    FDA *         fda;
     real          pf_coul, pf_vdw;
 
-	fda           = fr->fda;
-	pf_coul             = 0.0;
-	pf_vdw              = 0.0;
+    fda                 = fr->fda;
+    pf_coul             = 0.0;
+    pf_vdw              = 0.0;
 
     x                   = xx[0];
     f                   = ff[0];
@@ -483,9 +483,9 @@ gmx_nb_generic_kernel(t_nblist *                nlist,
             f[j3+1]          = f[j3+1] - ty;
             f[j3+2]          = f[j3+2] - tz;
 
-	        /* pairwise forces */
-		    fda->add_nonbonded(ii, jnr, pf_coul, pf_vdw, dx, dy, dz);
-		    fda->add_virial_bond(ii, jnr, fscal, dx, dy, dz);
+            /* pairwise forces */
+            fda->add_nonbonded(ii, jnr, pf_coul, pf_vdw, dx, dy, dz);
+            fda->add_virial_bond(ii, jnr, fscal, dx, dy, dz);
         }
 
         f[ii3+0]         = f[ii3+0] + fix;
