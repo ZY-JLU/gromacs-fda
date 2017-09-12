@@ -165,14 +165,19 @@ if(REGRESSIONTEST_PATH)
         message(FATAL_ERROR "Perl not found. Install perl, set PERL_EXECUTABLE to the perl location, or unset REGRESSIONTEST_PATH to disable testing.")
     endif()
 
-    #currently not testing tools because they don't contain any useful tests
-    foreach(subtest simple complex kernel freeenergy pdb2gmx rotation)
-        add_test(NAME regressiontests/${subtest}
-            #windows requires the command to be perl and not the script
-            COMMAND perl "${REGRESSIONTEST_PATH}/gmxtest.pl" ${subtest} ${ARGS})
-        set_tests_properties(regressiontests/${subtest} PROPERTIES
-            ENVIRONMENT "PATH=${PATH}")
-    endforeach()
+    if (GMX_BUILD_FDA)
+        add_subdirectory(${CMAKE_SOURCE_DIR}/src/gromacs/fda/regressiontests
+                         ${CMAKE_BINARY_DIR}/src/gromacs/fda/regressiontests)
+    else()
+        #currently not testing tools because they don't contain any useful tests
+        foreach(subtest simple complex kernel freeenergy pdb2gmx rotation)
+            add_test(NAME regressiontests/${subtest}
+                #windows requires the command to be perl and not the script
+                COMMAND perl "${REGRESSIONTEST_PATH}/gmxtest.pl" ${subtest} ${ARGS})
+            set_tests_properties(regressiontests/${subtest} PROPERTIES
+                ENVIRONMENT "PATH=${PATH}")
+        endforeach()
+    endif()
 else()
     gmx_add_missing_tests_notice("Regression tests have not been run. If you want to run them from the build system, get the correct version of the regression tests package and set REGRESSIONTEST_PATH in CMake to point to it, or set REGRESSIONTEST_DOWNLOAD=ON.")
 endif()
