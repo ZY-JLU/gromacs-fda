@@ -10,6 +10,9 @@
 #include "testutils/cmdlinetest.h"
 #include "testutils/testfilemanager.h"
 
+#define STR(x) #x
+#define STRING(x) STR(x)
+
 using namespace fda_analysis;
 
 //! Test fixture for FDA
@@ -19,7 +22,7 @@ class PDBTest : public gmx::test::CommandLineTestBase
 TEST_F(PDBTest, Basic)
 {
 	std::vector<int> atomGroup{2, 12, 22};
-    PDB pdb(std::string(fileManager().getInputDataDirectory()) + "/data/glycine_trimer/glycine_trimer.pdb", atomGroup);
+    PDB pdb(std::string(STRING(REGRESSIONTEST_PATH)) + "/fda-analysis/glycine_trimer/glycine_trimer.pdb", atomGroup);
 
     rvec *newCoords;
     snew(newCoords, 30);
