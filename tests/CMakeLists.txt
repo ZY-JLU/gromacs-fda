@@ -165,10 +165,7 @@ if(REGRESSIONTEST_PATH)
         message(FATAL_ERROR "Perl not found. Install perl, set PERL_EXECUTABLE to the perl location, or unset REGRESSIONTEST_PATH to disable testing.")
     endif()
 
-    if (GMX_BUILD_FDA)
-        add_subdirectory(${CMAKE_SOURCE_DIR}/src/gromacs/fda/regressiontests
-                         ${CMAKE_BINARY_DIR}/src/gromacs/fda/regressiontests)
-    else()
+    if (NOT GMX_BUILD_FDA)
         #currently not testing tools because they don't contain any useful tests
         foreach(subtest simple complex kernel freeenergy pdb2gmx rotation)
             add_test(NAME regressiontests/${subtest}

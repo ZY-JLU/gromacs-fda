@@ -367,18 +367,15 @@
                 /* 2 flops for scalar LJ+Coulomb force */
 
 #ifdef CALC_ENERGIES
-                /* pairwise forces */
+#ifdef BUILD_WITH_FDA
 				if (fabs(fcoul) > PF_TINY_REAL_NUMBER && fabs(fvdw) > PF_TINY_REAL_NUMBER) {
 					fda->add_nonbonded(cellInv[ai], cellInv[aj], fcoul, fvdw, dx, dy, dz);
-					//printf("Add vdw and coulomb %i %i %15.8f %15.8f\n",
-					//	ai, aj, fcoul, fvdw); fflush(stdout);
-				} else if (fabs(fcoul) > PF_TINY_REAL_NUMBER) {fda->add_nonbonded_single(cellInv[ai], cellInv[aj], fda::InteractionType_COULOMB, fcoul, dx, dy, dz);
-
-					//printf("Add coulomb %i %i %15.8f\n", ai, aj, fcoul); fflush(stdout);
+				} else if (fabs(fcoul) > PF_TINY_REAL_NUMBER) {
+					fda->add_nonbonded_single(cellInv[ai], cellInv[aj], fda::InteractionType_COULOMB, fcoul, dx, dy, dz);
 				} else if (fabs(fvdw) > PF_TINY_REAL_NUMBER) {
 					fda->add_nonbonded_single(cellInv[ai], cellInv[aj], fda::InteractionType_LJ, fscal, dx, dy, dz);
-					//printf("Add vdw %i %i %15.8f\n", ai, aj, fscal); fflush(stdout);
 				}
+#endif
 #endif
             }
 #ifdef HALF_LJ
@@ -387,11 +384,11 @@
                 fscal = fcoul;
 
 #ifdef CALC_ENERGIES
-				/* pairwise forces */
+#ifdef BUILD_WITH_FDA
 				if (fabs(fcoul) > PF_TINY_REAL_NUMBER) {
 					fda->add_nonbonded_single(cellInv[ai], cellInv[aj], fda::InteractionType_COULOMB, fcoul, dx, dy, dz);
-					//printf("Add coulomb %i %i %15.8f\n", ai, aj, fcoul); fflush(stdout);
 				}
+#endif
 #endif
             }
 #endif
@@ -399,11 +396,11 @@
             fscal = frLJ*rinvsq;
 
 #ifdef CALC_ENERGIES
-            /* pairwise forces */
+#ifdef BUILD_WITH_FDA
             if (fabs(fscal) > PF_TINY_REAL_NUMBER) {
             	fda->add_nonbonded_single(cellInv[ai], cellInv[aj], fda::InteractionType_LJ, fscal, dx, dy, dz);
-                //printf("Add vdw %i %i %15.8f\n", ai, aj, fscal); fflush(stdout);
             }
+#endif
 #endif
 #endif
             fx = fscal*dx;

@@ -74,8 +74,12 @@ nbnxn_kernel_cpu(nonbonded_verlet_group_t  *nbvg,
                  int                        clearF,
                  real                      *fshift,
                  real                      *vCoulomb,
-                 real                      *vVdw,
+                 real                      *vVdw
+#ifdef BUILD_WITH_FDA
+				 ,
                  FDA                       *fda,
-		         int                       *cellInv);
+		         int                       *cellInv
+#endif
+				 );
 
 #endif

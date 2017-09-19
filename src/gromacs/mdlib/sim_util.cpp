@@ -466,9 +466,13 @@ static void do_nb_verlet(t_forcerec *fr,
                              enerd->grpp.ener[egCOULSR],
                              fr->bBHAM ?
                              enerd->grpp.ener[egBHAMSR] :
-                             enerd->grpp.ener[egLJSR],
+                             enerd->grpp.ener[egLJSR]
+#ifdef BUILD_WITH_FDA
+							 ,
                              fr->fda,
-                             fr->nbv->nbs->a);
+                             fr->nbv->nbs->a
+#endif
+							 );
             break;
 
         case nbnxnk8x8x8_GPU:
@@ -486,9 +490,13 @@ static void do_nb_verlet(t_forcerec *fr,
                                  enerd->grpp.ener[egCOULSR],
                                  fr->bBHAM ?
                                  enerd->grpp.ener[egBHAMSR] :
-                                 enerd->grpp.ener[egLJSR],
+                                 enerd->grpp.ener[egLJSR]
+#ifdef BUILD_WITH_FDA
+                                 ,
                                  fr->fda,
-                                 fr->nbv->nbs->a);
+                                 fr->nbv->nbs->a
+#endif
+								 );
             break;
 
         default:

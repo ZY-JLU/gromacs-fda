@@ -21,6 +21,9 @@
 #include "testutils/TextSplitter.h"
 #include "testutils/LogicallyErrorComparer.h"
 
+#define STR(x) #x
+#define STRING(x) STR(x)
+
 namespace gmx
 {
 namespace test
@@ -65,7 +68,7 @@ TEST_P(FDATest, Basic)
     std::cout << GetParam().testDirectory << std::endl;
 
     std::string cwd = gmx::Path::getWorkingDirectory();
-    std::string dataPath = std::string(fileManager().getInputDataDirectory()) + "/data";
+    std::string dataPath = std::string(STRING(REGRESSIONTEST_PATH)) + "/fda";
     std::string testPath = fileManager().getTemporaryFilePath("/" + GetParam().testDirectory);
 
     std::string cmd = "mkdir -p " + testPath;

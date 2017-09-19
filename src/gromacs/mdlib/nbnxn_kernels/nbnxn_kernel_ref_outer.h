@@ -102,9 +102,12 @@ NBK_FUNC_NAME(_VgrpF)
 #ifdef CALC_ENERGIES
  ,
  real                       *Vvdw,
- real                       *Vc,
+ real                       *Vc
+#ifdef BUILD_WITH_FDA
+ ,
  FDA                        *fda,
  int                        *cellInv
+#endif
 #endif
 )
 {

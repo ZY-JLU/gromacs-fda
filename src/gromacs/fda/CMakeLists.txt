@@ -37,4 +37,7 @@ set(LIBGROMACS_SOURCES ${LIBGROMACS_SOURCES} ${FDA_SOURCES} PARENT_SCOPE)
 
 if(BUILD_TESTING)
   add_subdirectory(tests)
+  if(REGRESSIONTEST_PATH)
+    add_subdirectory(regressiontests)
+  endif()
 endif()
