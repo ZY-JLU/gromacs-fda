@@ -62,7 +62,7 @@ nbnxn_kernel_gpu_ref(const nbnxn_pairlist_t     *nbl,
                      FDA                        *fda,
                      int                        *cellInv
 #endif
-					 );
+                    );
 
 #ifdef __cplusplus
 }

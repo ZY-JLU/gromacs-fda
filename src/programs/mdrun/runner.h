@@ -87,7 +87,13 @@ class Mdrunner
         //! Parallelism-related user options.
         gmx_hw_opt_t             hw_opt;
         //! Filenames and properties from command-line argument values.
-        std::array<t_filenm, 42> filenames =
+        std::array<t_filenm,
+#ifdef BUILD_WITH_FDA
+                             42
+#else
+                             34
+                                > filenames =
+#endif
         {{{ efTPR, nullptr,     nullptr,     ffREAD },
           { efTRN, "-o",        nullptr,     ffWRITE },
           { efCOMPRESSED, "-x", nullptr,     ffOPTWR },
@@ -110,7 +116,8 @@ class Mdrunner
           { efXVG, "-runav",    "runaver",   ffOPTWR },
           { efXVG, "-px",       "pullx",     ffOPTWR },
           { efXVG, "-pf",       "pullf",     ffOPTWR },
-		  { efNDX, "-pfn",      nullptr,     ffOPTRD },
+#ifdef BUILD_WITH_FDA
+          { efNDX, "-pfn",      nullptr,     ffOPTRD },
           { efPFI, "-pfi",      "fda",       ffOPTRD },
           { efPFA, "-pfa",      "fda",       ffOPTWR },
           { efPFR, "-pfr",      "fda",       ffOPTWR },
@@ -118,6 +125,7 @@ class Mdrunner
           { efPSR, "-psr",      "fda",       ffOPTWR },
           { efVSA, "-vsa",      "fda",       ffOPTWR },
           { efVMA, "-vma",      "fda",       ffOPTWR },
+#endif
           { efXVG, "-ro",       "rotation",  ffOPTWR },
           { efLOG, "-ra",       "rotangles", ffOPTWR },
           { efLOG, "-rs",       "rotslabs",  ffOPTWR },

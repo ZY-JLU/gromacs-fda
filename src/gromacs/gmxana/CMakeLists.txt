@@ -36,11 +36,16 @@ file(GLOB GMXANA_SOURCES *.cpp)
 
 gmx_install_headers(
     gstat.h
-    )
+)
 
-add_subdirectory(fda)
+set(LIBGROMACS_SOURCES ${LIBGROMACS_SOURCES} ${GMXANA_SOURCES})
 
-set(LIBGROMACS_SOURCES ${LIBGROMACS_SOURCES} ${GMXANA_SOURCES} ${LIB_FDA_ANA_SOURCES} PARENT_SCOPE)
+if(GMX_BUILD_FDA)
+    add_subdirectory(fda)
+    list(APPEND LIBGROMACS_SOURCES ${LIB_FDA_ANA_SOURCES})
+endif()
+
+list(APPEND LIBGROMACS_SOURCES PARENT_SCOPE)
     
 if(BUILD_TESTING)
     add_subdirectory(tests)

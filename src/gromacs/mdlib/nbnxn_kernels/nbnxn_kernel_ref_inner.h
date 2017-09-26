@@ -33,10 +33,12 @@
  * the research papers on the package. Check out http://www.gromacs.org.
  */
 
+#ifdef BUILD_WITH_FDA
 #ifndef GMX_DOUBLE
 #define PF_TINY_REAL_NUMBER 1.0e-7f
 #else
 #define PF_TINY_REAL_NUMBER 1.0e-14
+#endif
 #endif
 
 /* When calculating RF or Ewald interactions we calculate the electrostatic
@@ -66,9 +68,6 @@
 
         ai = ci*UNROLLI + i;
 
-        //printf("ai = %i, x,y,z = %15.8f, %15.8f, %15.8f\n",
-        //	ai, xi[i*XI_STRIDE+XX], xi[i*XI_STRIDE+YY], xi[i*XI_STRIDE+ZZ]); fflush(stdout);
-
         type_i_off = type[ai]*ntype2;
 
         for (j = 0; j < UNROLLJ; j++)
@@ -97,8 +96,10 @@
 #endif
 #endif
             real fscal;
+#ifdef BUILD_WITH_FDA
 #ifdef CALC_COULOMB
-			real fvdw;
+            real fvdw;
+#endif
 #endif
             real fx, fy, fz;
 
@@ -129,9 +130,6 @@
             VLJ = 0;
 
             aj = cj*UNROLLJ + j;
-
-            //printf("aj = %i, x,y,z = %15.8f, %15.8f, %15.8f\n",
-            //	aj, x[aj*X_STRIDE+XX], x[aj*X_STRIDE+YY], x[aj*X_STRIDE+ZZ]); fflush(stdout);
 
             dx  = xi[i*XI_STRIDE+XX] - x[aj*X_STRIDE+XX];
             dy  = xi[i*XI_STRIDE+YY] - x[aj*X_STRIDE+YY];
@@ -362,8 +360,12 @@
             if (i < UNROLLI/2)
 #endif
             {
+#ifdef BUILD_WITH_FDA
             	fvdw = frLJ*rinvsq;
                 fscal = fvdw + fcoul;
+#else
+                fscal = frLJ*rinvsq + fcoul;
+#endif
                 /* 2 flops for scalar LJ+Coulomb force */
 
 #ifdef CALC_ENERGIES

@@ -68,7 +68,7 @@ typedef void (nbk_func_ener)(const nbnxn_pairlist_t     *nbl,
                              FDA                        *fda,
                              int                        *cellInv
 #endif
-							 );
+                            );
 
 /*! \brief Pointer to \p nbk_func_ener.
  */

@@ -358,7 +358,7 @@ void registerLegacyModules(gmx::CommandLineModuleManager *manager)
     registerModuleNoNice(manager, &gmx_view, "view",
                          "View a trajectory on an X-Windows terminal");
 
-    // FDA section
+#ifdef BUILD_WITH_FDA
     registerModule(manager, &gmx_fda_graph, "fda_graph",
                    "Convert a FDA force network as pdb-graph");
     registerModule(manager, &gmx_fda_get_stress, "fda_get_stress",
@@ -367,6 +367,7 @@ void registerLegacyModules(gmx::CommandLineModuleManager *manager)
                    "Plot punctual and von Mises virial stress as xpm or pdb");
     registerModule(manager, &gmx_fda_shortest_path, "fda_shortest_path",
                    "Generate the k-shortest paths of a FDA force network as pdb-graph");
+#endif
 
     {
         gmx::CommandLineModuleGroup group =

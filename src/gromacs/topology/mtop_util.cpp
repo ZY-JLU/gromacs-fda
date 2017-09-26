@@ -907,8 +907,11 @@ static void set_fbposres_params(t_idef *idef, gmx_molblock_t *molb,
 static void gen_local_top(const gmx_mtop_t *mtop,
                           bool              freeEnergyInteractionsAtEnd,
                           bool              bMergeConstr,
-                          gmx_localtop_t   *top,
-						  fda::FDASettings *ptr_fda_settings)
+                          gmx_localtop_t   *top
+#ifdef BUILD_WITH_FDA
+                          , fda::FDASettings *ptr_fda_settings
+#endif
+                         )
 {
     int                     mb, srcnr, destnr, ftype, natoms, mol, nposre_old, nfbposre_old;
     gmx_molblock_t         *molb;
@@ -978,10 +981,12 @@ static void gen_local_top(const gmx_mtop_t *mtop,
             }
             else if (!(bMergeConstr && ftype == F_CONSTRNC))
             {
+#ifdef BUILD_WITH_FDA
             	if (ptr_fda_settings and ptr_fda_settings->bonded_exclusion_on)
                     pf_ilistcat(ftype, &idef->il[ftype], &molt->ilist[ftype],
                              molb->nmol, destnr, srcnr, *ptr_fda_settings);
             	else
+#endif
                     ilistcat(ftype, &idef->il[ftype], &molt->ilist[ftype],
                              molb->nmol, destnr, srcnr);
             }
@@ -1032,14 +1037,21 @@ static void gen_local_top(const gmx_mtop_t *mtop,
 
 gmx_localtop_t *
 gmx_mtop_generate_local_top(const gmx_mtop_t *mtop,
-                            bool              freeEnergyInteractionsAtEnd,
-                            fda::FDASettings *ptr_fda_settings)
+                            bool              freeEnergyInteractionsAtEnd
+#ifdef BUILD_WITH_FDA
+                            , fda::FDASettings *ptr_fda_settings
+#endif
+                           )
 {
     gmx_localtop_t *top;
 
     snew(top, 1);
 
-    gen_local_top(mtop, freeEnergyInteractionsAtEnd, true, top, ptr_fda_settings);
+    gen_local_top(mtop, freeEnergyInteractionsAtEnd, true, top
+#ifdef BUILD_WITH_FDA
+                  , ptr_fda_settings
+#endif
+                 );
 
     return top;
 }
@@ -1050,7 +1062,12 @@ t_topology gmx_mtop_t_to_t_topology(gmx_mtop_t *mtop, bool freeMTop)
     gmx_localtop_t ltop;
     t_topology     top;
 
-    gen_local_top(mtop, false, FALSE, &ltop, nullptr);
+    gen_local_top(mtop, false, FALSE, &ltop
+
+#ifdef BUILD_WITH_FDA
+                  , nullptr
+#endif
+                 );
     ltop.idef.ilsort = ilsortUNKNOWN;
 
     top.name                        = mtop->name;

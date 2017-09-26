@@ -78,11 +78,11 @@ nbnxn_kernel_gpu_ref(const nbnxn_pairlist_t     *nbl,
                      real                       *Vc,
                      real                       *Vvdw
 #ifdef BUILD_WITH_FDA
-					 ,
+                     ,
                      FDA                        *fda,
                      int                        *cellInv
 #endif
-					 )
+                    )
 {
     const nbnxn_sci_t  *nbln;
     const real         *x;

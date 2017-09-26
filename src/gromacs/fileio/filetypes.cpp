@@ -97,6 +97,7 @@ static const int tpss[] =
 };
 #define NTPSS asize(tpss)
 
+#ifdef BUILD_WITH_FDA
 // FDA scalar stress type
 static const int tstrs[] =
 {
@@ -131,6 +132,7 @@ static const int tvst[] =
     efPDB, efXPM
 };
 #define NTVST asize(tvst)
+#endif
 
 typedef struct
 {
@@ -191,6 +193,7 @@ static const t_deffile deffile[efNR] =
     { eftASC, ".edi", "sam",    nullptr, "ED sampling input"},
     { eftASC, ".cub", "pot",  nullptr, "Gaussian cube file" },
     { eftASC, ".xpm", "root", nullptr, "X PixMap compatible matrix file" },
+#ifdef BUILD_WITH_FDA
     { eftASC, ".pfi", "fda", NULL, "FDA paired force input file" },
     { eftASC, ".pfa", "fda", NULL, "FDA paired force output atom-based matrix file" },
     { eftASC, ".pfr", "fda", NULL, "FDA paired force output residue-based matrix file" },
@@ -205,6 +208,7 @@ static const t_deffile deffile[efNR] =
     { eftGEN, ".???", "fda", NULL, "FDA atomic or residue based punctual stress", NTPSX, tpsx },
     { eftGEN, ".???", "fda", NULL, "FDA view stress format (pdb or xpm)", NTVST, tvst },
     { eftASC, ".pml", "fda", NULL, "FDA pymol script for pdb-trajectory" },
+#endif
     { eftASC, "", "rundir", nullptr, "Run directory" }
 };
 

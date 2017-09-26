@@ -8,6 +8,9 @@
 #ifndef SRC_GROMACS_FDA_FDA_H
 #define SRC_GROMACS_FDA_FDA_H
 
+#ifdef BUILD_WITH_FDA
+
+#include "gromacs/math/functions.h"
 #include "gromacs/math/vectypes.h"
 #include "gromacs/utility/real.h"
 
@@ -208,4 +211,5 @@ void fda_virial_bond(struct FDA *fda, int ai, int aj, real fbond, real dx, real 
 }
 #endif
 
+#endif // BUILD_WITH_FDA
 #endif // SRC_GROMACS_FDA_FDA_H

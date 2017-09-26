@@ -99,12 +99,14 @@ gmx_nb_generic_kernel(t_nblist *                nlist,
     gmx_bool      bExactElecCutoff, bExactVdwCutoff, bExactCutoff;
     gmx_bool      do_tab;
 
+#ifdef BUILD_WITH_FDA
     FDA *         fda;
     real          pf_coul, pf_vdw;
 
     fda                 = fr->fda;
     pf_coul             = 0.0;
     pf_vdw              = 0.0;
+#endif
 
     x                   = xx[0];
     f                   = ff[0];
@@ -273,7 +275,9 @@ gmx_nb_generic_kernel(t_nblist *                nlist,
                         /* Vanilla cutoff coulomb */
                         velec            = qq*rinv;
                         felec            = velec*rinvsq;
+#ifdef BUILD_WITH_FDA
                         pf_coul          = felec;
+#endif
                         /* The shift for the Coulomb potential is stored in
                          * the RF parameter c_rf, which is 0 without shift
                          */
@@ -284,7 +288,9 @@ gmx_nb_generic_kernel(t_nblist *                nlist,
                         /* Reaction-field */
                         velec            = qq*(rinv+fr->k_rf*rsq-fr->c_rf);
                         felec            = qq*(rinv*rinvsq-2.0*fr->k_rf);
+#ifdef BUILD_WITH_FDA
                         pf_coul          = felec;
+#endif
                         break;
 
                     case GMX_NBKERNEL_ELEC_CUBICSPLINETABLE:
@@ -298,7 +304,9 @@ gmx_nb_generic_kernel(t_nblist *                nlist,
                         FF               = Fp+Geps+2.0*Heps2;
                         velec            = qq*VV;
                         felec            = -qq*FF*tabscale*rinv;
+#ifdef BUILD_WITH_FDA
                         pf_coul          = felec;
+#endif
                         break;
 
                     case GMX_NBKERNEL_ELEC_GENERALIZEDBORN:
@@ -315,7 +323,9 @@ gmx_nb_generic_kernel(t_nblist *                nlist,
                         rinvcorr         = (fr->coulomb_modifier == eintmodPOTSHIFT) ? rinv-fr->ic->sh_ewald : rinv;
                         velec            = qq*(rinvcorr-(ewtab[ewitab+2]-ewtabhalfspace*eweps*(ewtab[ewitab]+felec)));
                         felec            = qq*rinv*(rinvsq-felec);
+#ifdef BUILD_WITH_FDA
                         pf_coul          = felec;
+#endif
                         break;
 
                     default:
@@ -364,7 +374,9 @@ gmx_nb_generic_kernel(t_nblist *                nlist,
                         vvdw_disp        = c6*rinvsix;
                         vvdw_rep         = c12*rinvsix*rinvsix;
                         fvdw             = (vvdw_rep-vvdw_disp)*rinvsq;
+#ifdef BUILD_WITH_FDA
                         pf_vdw           = fvdw;
+#endif
                         if (fr->vdw_modifier == eintmodPOTSHIFT)
                         {
                             vvdw             = (vvdw_rep + c12*sh_repulsion)/12.0 - (vvdw_disp + c6*sh_dispersion)/6.0;
@@ -386,7 +398,9 @@ gmx_nb_generic_kernel(t_nblist *                nlist,
                         br               = cexp2*rsq*rinv;
                         vvdw_rep         = cexp1*std::exp(-br);
                         fvdw             = (br*vvdw_rep-vvdw_disp)*rinvsq;
+#ifdef BUILD_WITH_FDA
                         pf_vdw           = fvdw;
+#endif
                         if (fr->vdw_modifier == eintmodPOTSHIFT)
                         {
                             vvdw             = (vvdw_rep-cexp1*std::exp(-cexp2*rvdw))-(vvdw_disp + c6*sh_dispersion)/6.0;
@@ -420,7 +434,9 @@ gmx_nb_generic_kernel(t_nblist *                nlist,
                         vvdw_rep         = c12*VV;
                         fijR             = c12*FF;
                         fvdw             = -(fijD+fijR)*tabscale*rinv;
+#ifdef BUILD_WITH_FDA
                         pf_vdw           = fvdw;
+#endif
                         vvdw             = vvdw_disp + vvdw_rep;
                         break;
 
@@ -437,7 +453,9 @@ gmx_nb_generic_kernel(t_nblist *                nlist,
                         vvdw_disp        = (c6-c6grid*(1.0-poly))*rinvsix;
                         vvdw_rep         = c12*rinvsix*rinvsix;
                         fvdw             = (vvdw_rep - vvdw_disp - c6grid*(1.0/6.0)*exponent*ewclj6)*rinvsq;
+#ifdef BUILD_WITH_FDA
                         pf_vdw           = fvdw;
+#endif
                         if (fr->vdw_modifier == eintmodPOTSHIFT)
                         {
                             vvdw             = (vvdw_rep + c12*sh_repulsion)/12.0 - (vvdw_disp + c6*sh_dispersion - c6grid*sh_lj_ewald)/6.0;
@@ -483,9 +501,10 @@ gmx_nb_generic_kernel(t_nblist *                nlist,
             f[j3+1]          = f[j3+1] - ty;
             f[j3+2]          = f[j3+2] - tz;
 
-            /* pairwise forces */
+#ifdef BUILD_WITH_FDA
             fda->add_nonbonded(ii, jnr, pf_coul, pf_vdw, dx, dy, dz);
             fda->add_virial_bond(ii, jnr, fscal, dx, dy, dz);
+#endif
         }
 
         f[ii3+0]         = f[ii3+0] + fix;

@@ -35,6 +35,7 @@
 
 #include "gromacs/commandline/cmdlinemodule.h"
 #include "gromacs/commandline/cmdlinemodulemanager.h"
+
 #include "mdrun/mdrun_main.h"
 
 namespace

@@ -142,11 +142,11 @@ nbnxn_kernel_cpu(nonbonded_verlet_group_t  *nbvg,
                  real                      *vCoulomb,
                  real                      *vVdw
 #ifdef BUILD_WITH_FDA
-				 ,
+                 ,
                  FDA                       *fda,
-		         int                       *cellInv
+                 int                       *cellInv
 #endif
-                 )
+                )
 {
     const nbnxn_atomdata_t  *nbat = nbvg->nbat;
 
@@ -310,11 +310,11 @@ nbnxn_kernel_cpu(nonbonded_verlet_group_t  *nbvg,
                                                          out->Vvdw,
                                                          out->Vc
 #ifdef BUILD_WITH_FDA
-														 ,
+                                                         ,
                                                          fda,
                                                          cellInv
 #endif
-														 );
+                                                        );
                     break;
 #ifdef GMX_NBNXN_SIMD_2XNN
                 case nbnxnk4xN_SIMD_2xNN:
@@ -361,11 +361,11 @@ nbnxn_kernel_cpu(nonbonded_verlet_group_t  *nbvg,
                                                             out->Vvdw,
                                                             out->Vc
 #ifdef BUILD_WITH_FDA
-															,
+                                                            ,
                                                             fda,
                                                             cellInv
 #endif
-															);
+                                                           );
                     break;
 #ifdef GMX_NBNXN_SIMD_2XNN
                 case nbnxnk4xN_SIMD_2xNN:
