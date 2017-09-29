@@ -57,6 +57,7 @@
 #include "gromacs/mdlib/nb_verlet.h"
 #include "gromacs/mdlib/nbnxn_consts.h"
 #include "gromacs/mdlib/nbnxn_gpu.h"
+#include "gromacs/mdlib/nbnxn_gpu_common.h"
 #include "gromacs/mdlib/nbnxn_gpu_data_mgmt.h"
 #include "gromacs/mdlib/nbnxn_gpu_jit_support.h"
 #include "gromacs/mdtypes/interaction_const.h"
@@ -232,7 +233,6 @@ static void init_ewald_coulomb_force_table(const interaction_const_t       *ic,
     // TODO: handle errors, check clCreateBuffer flags
 
     nbp->coulomb_tab_climg2d  = coul_tab;
-    nbp->coulomb_tab_size     = ic->tabq_size;
     nbp->coulomb_tab_scale    = ic->tabq_scale;
 }
 
@@ -901,6 +901,11 @@ void nbnxn_gpu_init_pairlist(gmx_nbnxn_ocl_t        *nb,
                              const nbnxn_pairlist_t *h_plist,
                              int                     iloc)
 {
+    if (canSkipWork(nb, iloc))
+    {
+        return;
+    }
+
     char             sbuf[STRLEN];
     cl_command_queue stream     = nb->stream[iloc];
     cl_plist_t      *d_plist    = nb->plist[iloc];

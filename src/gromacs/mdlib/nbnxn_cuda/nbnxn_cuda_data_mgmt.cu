@@ -52,6 +52,7 @@
 #include "gromacs/mdlib/force_flags.h"
 #include "gromacs/mdlib/nb_verlet.h"
 #include "gromacs/mdlib/nbnxn_consts.h"
+#include "gromacs/mdlib/nbnxn_gpu_common.h"
 #include "gromacs/mdlib/nbnxn_gpu_data_mgmt.h"
 #include "gromacs/mdtypes/interaction_const.h"
 #include "gromacs/mdtypes/md_enums.h"
@@ -85,19 +86,6 @@ static void nbnxn_cuda_clear_e_fshift(gmx_nbnxn_cuda_t *nb);
 static void nbnxn_cuda_free_nbparam_table(cu_nbparam_t            *nbparam,
                                           const gmx_device_info_t *dev_info);
 
-
-/*! \brief Return whether texture objects are used on this device.
- *
- * \param[in]   pointer to the GPU device info structure to inspect for texture objects support
- * \return      true if texture objects are used on this device
- */
-static bool use_texobj(const gmx_device_info_t *dev_info)
-{
-    assert(!c_disableCudaTextures);
-    /* Only device CC >= 3.0 (Kepler and later) support texture objects */
-    return (dev_info->prop.major >= 3);
-}
-
 /*! \brief Return whether combination rules are used.
  *
  * \param[in]   pointer to nonbonded paramter struct
@@ -109,62 +97,6 @@ static inline bool useLjCombRule(const cu_nbparam_t  *nbparam)
             nbparam->vdwtype == evdwCuCUTCOMBLB);
 }
 
-/*! \brief Set up float texture object.
- *
- * Set up texture object for float data and bind it to the device memory
- * \p devPtr points to.
- *
- * \param[out] texObj   texture object to initialize
- * \param[in]  devPtr   pointer to device global memory to bind \p texObj to
- * \param[in]  sizeInBytes  size of memory area to bind \p texObj to
- */
-static void setup1DFloatTexture(cudaTextureObject_t &texObj,
-                                void                *devPtr,
-                                size_t               sizeInBytes)
-{
-    assert(!c_disableCudaTextures);
-
-    cudaError_t      stat;
-    cudaResourceDesc rd;
-    cudaTextureDesc  td;
-
-    memset(&rd, 0, sizeof(rd));
-    rd.resType                  = cudaResourceTypeLinear;
-    rd.res.linear.devPtr        = devPtr;
-    rd.res.linear.desc.f        = cudaChannelFormatKindFloat;
-    rd.res.linear.desc.x        = 32;
-    rd.res.linear.sizeInBytes   = sizeInBytes;
-
-    memset(&td, 0, sizeof(td));
-    td.readMode                 = cudaReadModeElementType;
-    stat = cudaCreateTextureObject(&texObj, &rd, &td, NULL);
-    CU_RET_ERR(stat, "cudaCreateTextureObject failed");
-}
-
-/*! \brief Set up float texture reference.
- *
- * Set up texture object for float data and bind it to the device memory
- * \p devPtr points to.
- *
- * \param[out] texObj   texture reference to initialize
- * \param[in]  devPtr   pointer to device global memory to bind \p texObj to
- * \param[in]  sizeInBytes  size of memory area to bind \p texObj to
- */
-static void setup1DFloatTexture(const struct texture<float, 1, cudaReadModeElementType> *texRef,
-                                const void                                              *devPtr,
-                                size_t                                                   sizeInBytes)
-{
-    assert(!c_disableCudaTextures);
-
-    cudaError_t           stat;
-    cudaChannelFormatDesc cd;
-
-    cd   = cudaCreateChannelDesc<float>();
-    stat = cudaBindTexture(NULL, texRef, devPtr, &cd, sizeInBytes);
-    CU_RET_ERR(stat, "cudaBindTexture failed");
-}
-
-
 /*! \brief Initialized the Ewald Coulomb correction GPU table.
 
     Tabulates the Ewald Coulomb force and initializes the size/scale
@@ -175,36 +107,15 @@ static void init_ewald_coulomb_force_table(const interaction_const_t *ic,
                                            cu_nbparam_t              *nbp,
                                            const gmx_device_info_t   *dev_info)
 {
-    float       *coul_tab;
-    cudaError_t  stat;
-
     if (nbp->coulomb_tab != NULL)
     {
         nbnxn_cuda_free_nbparam_table(nbp, dev_info);
     }
 
-    /* initialize table data in nbp and crete/copy into in global mem */
-    stat = cudaMalloc((void **)&coul_tab, ic->tabq_size*sizeof(*coul_tab));
-    CU_RET_ERR(stat, "cudaMalloc failed on coulumb_tab");
-    cu_copy_H2D(coul_tab, ic->tabq_coul_F, ic->tabq_size*sizeof(*coul_tab));
-
-    nbp->coulomb_tab       = coul_tab;
-    nbp->coulomb_tab_size  = ic->tabq_size;
     nbp->coulomb_tab_scale = ic->tabq_scale;
-
-    if (!c_disableCudaTextures)
-    {
-        if (use_texobj(dev_info))
-        {
-            setup1DFloatTexture(nbp->coulomb_tab_texobj, nbp->coulomb_tab,
-                                nbp->coulomb_tab_size*sizeof(*nbp->coulomb_tab));
-        }
-        else
-        {
-            setup1DFloatTexture(&nbnxn_cuda_get_coulomb_tab_texref(), nbp->coulomb_tab,
-                                nbp->coulomb_tab_size*sizeof(*nbp->coulomb_tab));
-        }
-    }
+    initParamLookupTable(nbp->coulomb_tab, nbp->coulomb_tab_texobj,
+                         &nbnxn_cuda_get_coulomb_tab_texref(),
+                         ic->tabq_coul_F, ic->tabq_size, dev_info);
 }
 
 
@@ -313,47 +224,6 @@ static void set_cutoff_parameters(cu_nbparam_t              *nbp,
     nbp->dispersion_shift  = ic->dispersion_shift;
     nbp->repulsion_shift   = ic->repulsion_shift;
     nbp->vdw_switch        = ic->vdw_switch;
-}
-
-/*! \brief Initialize LJ parameter lookup table.
- *
- * Initializes device memory and copies data from host an binds
- * a texture to allocated device memory to be used for LJ parameter
- * lookup.
- *
- * \param[out] devPtr    device pointer to the memory to be allocated
- * \param[out] texObj    texture object to be initialized
- * \param[out] texRef    texture reference to be initialized
- * \param[in]  hostPtr   pointer to the host memory to be uploaded to the device
- * \param[in]  numElem   number of elements in the hostPtr
- * \param[in]  devInfo   pointer to the info struct of the device in use
- */
-static void initParamLookupTable(float                    * &devPtr,
-                                 cudaTextureObject_t       &texObj,
-                                 const struct texture<float, 1, cudaReadModeElementType> *texRef,
-                                 const float               *hostPtr,
-                                 int                        numElem,
-                                 const gmx_device_info_t   *devInfo)
-{
-    cudaError_t stat;
-
-    size_t      sizeInBytes = numElem*sizeof(*devPtr);
-
-    stat  = cudaMalloc((void **)&devPtr, sizeInBytes);
-    CU_RET_ERR(stat, "cudaMalloc failed in initParamLookupTable");
-    cu_copy_H2D(devPtr, (void *)hostPtr, sizeInBytes);
-
-    if (!c_disableCudaTextures)
-    {
-        if (use_texobj(devInfo))
-        {
-            setup1DFloatTexture(texObj, devPtr, sizeInBytes);
-        }
-        else
-        {
-            setup1DFloatTexture(texRef, devPtr, sizeInBytes);
-        }
-    }
 }
 
 /*! Initializes the nonbonded parameter data structure. */
@@ -702,6 +572,11 @@ void nbnxn_gpu_init_pairlist(gmx_nbnxn_cuda_t       *nb,
                              const nbnxn_pairlist_t *h_plist,
                              int                     iloc)
 {
+    if (canSkipWork(nb, iloc))
+    {
+        return;
+    }
+
     char          sbuf[STRLEN];
     cudaError_t   stat;
     bool          bDoTime    = nb->bDoTime;
@@ -916,7 +791,7 @@ static void nbnxn_cuda_free_nbparam_table(cu_nbparam_t            *nbparam,
                 CU_RET_ERR(stat, "cudaUnbindTexture on coulomb_tab_texref failed");
             }
         }
-        cu_free_buffered(nbparam->coulomb_tab, &nbparam->coulomb_tab_size);
+        cu_free_buffered(nbparam->coulomb_tab);
     }
 }
 

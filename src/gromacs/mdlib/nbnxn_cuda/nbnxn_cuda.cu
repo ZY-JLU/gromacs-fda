@@ -56,6 +56,7 @@
 #include "gromacs/gpu_utils/cudautils.cuh"
 #include "gromacs/mdlib/force_flags.h"
 #include "gromacs/mdlib/nb_verlet.h"
+#include "gromacs/mdlib/nbnxn_gpu_common.h"
 #include "gromacs/mdlib/nbnxn_gpu_data_mgmt.h"
 #include "gromacs/mdlib/nbnxn_pairlist.h"
 #include "gromacs/timing/gpu_timing.h"
@@ -361,7 +362,7 @@ void nbnxn_gpu_launch_kernel(gmx_nbnxn_cuda_t       *nb,
        clearing. All these operations, except for the local interaction kernel,
        are needed for the non-local interactions. The skip of the local kernel
        call is taken care of later in this function. */
-    if (iloc == eintNonlocal && plist->nsci == 0)
+    if (canSkipWork(nb, iloc))
     {
         plist->haveFreshList = false;
 
@@ -391,6 +392,12 @@ void nbnxn_gpu_launch_kernel(gmx_nbnxn_cuda_t       *nb,
     cu_copy_H2D_async(adat->xq + adat_begin, nbatom->x + adat_begin * 4,
                       adat_len * sizeof(*adat->xq), stream);
 
+    if (bDoTime)
+    {
+        stat = cudaEventRecord(t->stop_nb_h2d[iloc], stream);
+        CU_RET_ERR(stat, "cudaEventRecord failed");
+    }
+
     /* When we get here all misc operations issues in the local stream as well as
        the local xq H2D are done,
        so we record that in the local stream and wait for it in the nonlocal one. */
@@ -406,12 +413,6 @@ void nbnxn_gpu_launch_kernel(gmx_nbnxn_cuda_t       *nb,
             stat = cudaStreamWaitEvent(stream, nb->misc_ops_and_local_H2D_done, 0);
             CU_RET_ERR(stat, "cudaStreamWaitEvent on misc_ops_and_local_H2D_done failed");
         }
-    }
-
-    if (bDoTime)
-    {
-        stat = cudaEventRecord(t->stop_nb_h2d[iloc], stream);
-        CU_RET_ERR(stat, "cudaEventRecord failed");
     }
 
     if (nbp->useDynamicPruning && plist->haveFreshList)
@@ -698,7 +699,7 @@ void nbnxn_gpu_launch_cpyback(gmx_nbnxn_cuda_t       *nb,
     bool             bCalcFshift = flags & GMX_FORCE_VIRIAL;
 
     /* don't launch non-local copy-back if there was no non-local work to do */
-    if (iloc == eintNonlocal && nb->plist[iloc]->nsci == 0)
+    if (canSkipWork(nb, iloc))
     {
         return;
     }
@@ -851,7 +852,7 @@ void nbnxn_gpu_wait_for_gpu(gmx_nbnxn_cuda_t *nb,
        NOTE: if timing with multiple GPUs (streams) becomes possible, the
        counters could end up being inconsistent due to not being incremented
        on some of the nodes! */
-    if (!(iloc == eintNonlocal && nb->plist[iloc]->nsci == 0))
+    if (!canSkipWork(nb, iloc))
     {
         stat = cudaStreamSynchronize(nb->stream[iloc]);
         CU_RET_ERR(stat, "cudaStreamSynchronize failed in cu_blockwait_nb");

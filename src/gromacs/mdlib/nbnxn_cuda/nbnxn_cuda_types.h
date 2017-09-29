@@ -74,10 +74,6 @@ static const int c_numClPerSupercl = c_nbnxnGpuNumClusterPerSupercluster;
 /*! \brief cluster size = number of atoms per cluster. */
 static const int c_clSize          = c_nbnxnGpuClusterSize;
 
-/*! \brief True if the use of texture fetch in the CUDA kernels is disabled. */
-static const bool c_disableCudaTextures = DISABLE_CUDA_TEXTURES;
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -198,7 +194,6 @@ struct cu_nbparam
     cudaTextureObject_t  nbfp_comb_texobj; /**< texture object bound to nbfp_texobj                                                */
 
     /* Ewald Coulomb force table data - accessed through texture memory */
-    int                  coulomb_tab_size;   /**< table size (s.t. it fits in texture cache) */
     float                coulomb_tab_scale;  /**< table scale/spacing                        */
     float               *coulomb_tab;        /**< pointer to the table in the device memory  */
     cudaTextureObject_t  coulomb_tab_texobj; /**< texture object bound to coulomb_tab        */

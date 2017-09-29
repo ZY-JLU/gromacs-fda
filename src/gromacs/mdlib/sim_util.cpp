@@ -384,12 +384,12 @@ static void post_process_forces(t_commrec *cr,
             /* Now add the forces, this is local */
             sum_forces(f, fr->f_novirsum);
 
-            if (EEL_FULL(fr->eeltype))
+            if (EEL_FULL(fr->ic->eeltype))
             {
                 /* Add the mesh contribution to the virial */
                 m_add(vir_force, fr->vir_el_recip, vir_force);
             }
-            if (EVDW_PME(fr->vdwtype))
+            if (EVDW_PME(fr->ic->vdwtype))
             {
                 /* Add the mesh contribution to the virial */
                 m_add(vir_force, fr->vir_lj_recip, vir_force);
@@ -754,7 +754,7 @@ static void do_force_cutsVERLET(FILE *fplog, t_commrec *cr,
     bCalcCGCM     = (bFillGrid && !DOMAINDECOMP(cr));
     bDoForces     = (flags & GMX_FORCE_FORCES);
     bUseGPU       = fr->nbv->bUseGPU;
-    bUseOrEmulGPU = bUseGPU || fr->nbv->emulateGpu;
+    bUseOrEmulGPU = bUseGPU || (fr->nbv->emulateGpu == EmulateGpuNonbonded::Yes);
 
     /* At a search step we need to start the first balancing region
      * somewhere early inside the step after communication during domain
@@ -910,16 +910,18 @@ static void do_force_cutsVERLET(FILE *fplog, t_commrec *cr,
     /* initialize the GPU atom data and copy shift vector */
     if (bUseGPU)
     {
+        wallcycle_start_nocount(wcycle, ewcLAUNCH_GPU);
+        wallcycle_sub_start_nocount(wcycle, ewcsLAUNCH_GPU_NONBONDED);
+
         if (bNS)
         {
-            wallcycle_start_nocount(wcycle, ewcLAUNCH_GPU_NB);
             nbnxn_gpu_init_atomdata(nbv->gpu_nbv, nbv->grp[eintLocal].nbat);
-            wallcycle_stop(wcycle, ewcLAUNCH_GPU_NB);
         }
 
-        wallcycle_start_nocount(wcycle, ewcLAUNCH_GPU_NB);
         nbnxn_gpu_upload_shiftvec(nbv->gpu_nbv, nbv->grp[eintLocal].nbat);
-        wallcycle_stop(wcycle, ewcLAUNCH_GPU_NB);
+
+        wallcycle_sub_stop(wcycle, ewcsLAUNCH_GPU_NONBONDED);
+        wallcycle_stop(wcycle, ewcLAUNCH_GPU);
     }
 
     /* do local pair search */
@@ -968,11 +970,13 @@ static void do_force_cutsVERLET(FILE *fplog, t_commrec *cr,
             ddOpenBalanceRegionGpu(cr->dd);
         }
 
-        wallcycle_start(wcycle, ewcLAUNCH_GPU_NB);
-        /* launch local nonbonded F on GPU */
+        wallcycle_start(wcycle, ewcLAUNCH_GPU);
+        wallcycle_sub_start(wcycle, ewcsLAUNCH_GPU_NONBONDED);
+        /* launch local nonbonded work on GPU */
         do_nb_verlet(fr, ic, enerd, flags, eintLocal, enbvClearFNo,
                      step, nrnb, wcycle);
-        wallcycle_stop(wcycle, ewcLAUNCH_GPU_NB);
+        wallcycle_sub_stop(wcycle, ewcsLAUNCH_GPU_NONBONDED);
+        wallcycle_stop(wcycle, ewcLAUNCH_GPU);
     }
 
     /* Communicate coordinates and sum dipole if necessary +
@@ -1047,18 +1051,21 @@ static void do_force_cutsVERLET(FILE *fplog, t_commrec *cr,
 
         if (bUseGPU && !bDiffKernels)
         {
-            wallcycle_start(wcycle, ewcLAUNCH_GPU_NB);
-            /* launch non-local nonbonded F on GPU */
+            wallcycle_start(wcycle, ewcLAUNCH_GPU);
+            wallcycle_sub_start(wcycle, ewcsLAUNCH_GPU_NONBONDED);
+            /* launch non-local nonbonded tasks on GPU */
             do_nb_verlet(fr, ic, enerd, flags, eintNonlocal, enbvClearFNo,
                          step, nrnb, wcycle);
-            wallcycle_stop(wcycle, ewcLAUNCH_GPU_NB);
+            wallcycle_sub_stop(wcycle, ewcsLAUNCH_GPU_NONBONDED);
+            wallcycle_stop(wcycle, ewcLAUNCH_GPU);
         }
     }
 
     if (bUseGPU)
     {
         /* launch D2H copy-back F */
-        wallcycle_start_nocount(wcycle, ewcLAUNCH_GPU_NB);
+        wallcycle_start_nocount(wcycle, ewcLAUNCH_GPU);
+        wallcycle_sub_start_nocount(wcycle, ewcsLAUNCH_GPU_NONBONDED);
         if (DOMAINDECOMP(cr) && !bDiffKernels)
         {
             nbnxn_gpu_launch_cpyback(nbv->gpu_nbv, nbv->grp[eintNonlocal].nbat,
@@ -1066,7 +1073,8 @@ static void do_force_cutsVERLET(FILE *fplog, t_commrec *cr,
         }
         nbnxn_gpu_launch_cpyback(nbv->gpu_nbv, nbv->grp[eintLocal].nbat,
                                  flags, eatLocal);
-        wallcycle_stop(wcycle, ewcLAUNCH_GPU_NB);
+        wallcycle_sub_stop(wcycle, ewcsLAUNCH_GPU_NONBONDED);
+        wallcycle_stop(wcycle, ewcLAUNCH_GPU);
     }
 
     if (bStateChanged && inputrecNeedMutot(inputrec))
@@ -1246,7 +1254,7 @@ static void do_force_cutsVERLET(FILE *fplog, t_commrec *cr,
     /* update QMMMrec, if necessary */
     if (fr->bQMMM)
     {
-        update_QMMMrec(cr, fr, x, mdatoms, box, top);
+        update_QMMMrec(cr, fr, x, mdatoms, box);
     }
 
     /* Compute the bonded and non-bonded energies and optionally forces */
@@ -1353,7 +1361,8 @@ static void do_force_cutsVERLET(FILE *fplog, t_commrec *cr,
             }
 
             /* now clear the GPU outputs while we finish the step on the CPU */
-            wallcycle_start_nocount(wcycle, ewcLAUNCH_GPU_NB);
+            wallcycle_start_nocount(wcycle, ewcLAUNCH_GPU);
+            wallcycle_sub_start_nocount(wcycle, ewcsLAUNCH_GPU_NONBONDED);
             nbnxn_gpu_clear_outputs(nbv->gpu_nbv, flags);
 
             /* Is dynamic pair-list pruning activated? */
@@ -1378,7 +1387,8 @@ static void do_force_cutsVERLET(FILE *fplog, t_commrec *cr,
                                                       numRollingParts);
                 }
             }
-            wallcycle_stop(wcycle, ewcLAUNCH_GPU_NB);
+            wallcycle_sub_stop(wcycle, ewcsLAUNCH_GPU_NONBONDED);
+            wallcycle_stop(wcycle, ewcLAUNCH_GPU);
         }
         else
         {
@@ -1735,7 +1745,7 @@ static void do_force_cutsGROUP(FILE *fplog, t_commrec *cr,
     /* update QMMMrec, if necessary */
     if (fr->bQMMM)
     {
-        update_QMMMrec(cr, fr, x, mdatoms, box, top);
+        update_QMMMrec(cr, fr, x, mdatoms, box);
     }
 
     /* Compute the bonded and non-bonded energies and optionally forces */
@@ -1787,7 +1797,7 @@ static void do_force_cutsGROUP(FILE *fplog, t_commrec *cr,
              * When we do not calculate the virial, fr->f_novirsum = f,
              * so we have already communicated these forces.
              */
-            if (EEL_FULL(fr->eeltype) && cr->dd->n_intercg_excl &&
+            if (EEL_FULL(fr->ic->eeltype) && cr->dd->n_intercg_excl &&
                 (flags & GMX_FORCE_VIRIAL))
             {
                 dd_move_f(cr->dd, as_rvec_array(fr->f_novirsum->data()), nullptr);
@@ -2123,6 +2133,8 @@ void calc_enervirdiff(FILE *fplog, int eDispCorr, t_forcerec *fr)
     fr->virdiffsix      = 0;
     fr->virdifftwelve   = 0;
 
+    const interaction_const_t *ic = fr->ic;
+
     if (eDispCorr != edispcNO)
     {
         for (i = 0; i < 2; i++)
@@ -2130,19 +2142,19 @@ void calc_enervirdiff(FILE *fplog, int eDispCorr, t_forcerec *fr)
             eners[i] = 0;
             virs[i]  = 0;
         }
-        if ((fr->vdw_modifier == eintmodPOTSHIFT) ||
-            (fr->vdw_modifier == eintmodPOTSWITCH) ||
-            (fr->vdw_modifier == eintmodFORCESWITCH) ||
-            (fr->vdwtype == evdwSHIFT) ||
-            (fr->vdwtype == evdwSWITCH))
+        if ((ic->vdw_modifier == eintmodPOTSHIFT) ||
+            (ic->vdw_modifier == eintmodPOTSWITCH) ||
+            (ic->vdw_modifier == eintmodFORCESWITCH) ||
+            (ic->vdwtype == evdwSHIFT) ||
+            (ic->vdwtype == evdwSWITCH))
         {
-            if (((fr->vdw_modifier == eintmodPOTSWITCH) ||
-                 (fr->vdw_modifier == eintmodFORCESWITCH) ||
-                 (fr->vdwtype == evdwSWITCH)) && fr->rvdw_switch == 0)
+            if (((ic->vdw_modifier == eintmodPOTSWITCH) ||
+                 (ic->vdw_modifier == eintmodFORCESWITCH) ||
+                 (ic->vdwtype == evdwSWITCH)) && ic->rvdw_switch == 0)
             {
                 gmx_fatal(FARGS,
                           "With dispersion correction rvdw-switch can not be zero "
-                          "for vdw-type = %s", evdw_names[fr->vdwtype]);
+                          "for vdw-type = %s", evdw_names[ic->vdwtype]);
             }
 
             /* TODO This code depends on the logic in tables.c that
@@ -2154,8 +2166,8 @@ void calc_enervirdiff(FILE *fplog, int eDispCorr, t_forcerec *fr)
             vdwtab = fr->dispersionCorrectionTable->data;
 
             /* Round the cut-offs to exact table values for precision */
-            ri0  = static_cast<int>(floor(fr->rvdw_switch*scale));
-            ri1  = static_cast<int>(ceil(fr->rvdw*scale));
+            ri0  = static_cast<int>(floor(ic->rvdw_switch*scale));
+            ri1  = static_cast<int>(ceil(ic->rvdw*scale));
 
             /* The code below has some support for handling force-switching, i.e.
              * when the force (instead of potential) is switched over a limited
@@ -2173,14 +2185,14 @@ void calc_enervirdiff(FILE *fplog, int eDispCorr, t_forcerec *fr)
              * we need to calculate the constant shift up to the point where we
              * start modifying the potential.
              */
-            ri0  = (fr->vdw_modifier == eintmodPOTSHIFT) ? ri1 : ri0;
+            ri0  = (ic->vdw_modifier == eintmodPOTSHIFT) ? ri1 : ri0;
 
             r0   = ri0/scale;
             rc3  = r0*r0*r0;
             rc9  = rc3*rc3*rc3;
 
-            if ((fr->vdw_modifier == eintmodFORCESWITCH) ||
-                (fr->vdwtype == evdwSHIFT))
+            if ((ic->vdw_modifier == eintmodFORCESWITCH) ||
+                (ic->vdwtype == evdwSHIFT))
             {
                 /* Determine the constant energy shift below rvdw_switch.
                  * Table has a scale factor since we have scaled it down to compensate
@@ -2189,7 +2201,7 @@ void calc_enervirdiff(FILE *fplog, int eDispCorr, t_forcerec *fr)
                 fr->enershiftsix    = (real)(-1.0/(rc3*rc3)) - 6.0*vdwtab[8*ri0];
                 fr->enershifttwelve = (real)( 1.0/(rc9*rc3)) - 12.0*vdwtab[8*ri0 + 4];
             }
-            else if (fr->vdw_modifier == eintmodPOTSHIFT)
+            else if (ic->vdw_modifier == eintmodPOTSHIFT)
             {
                 fr->enershiftsix    = (real)(-1.0/(rc3*rc3));
                 fr->enershifttwelve = (real)( 1.0/(rc9*rc3));
@@ -2229,11 +2241,11 @@ void calc_enervirdiff(FILE *fplog, int eDispCorr, t_forcerec *fr)
             virs[0]  +=  8.0*M_PI/rc3;
             virs[1]  += -16.0*M_PI/(3.0*rc9);
         }
-        else if (fr->vdwtype == evdwCUT ||
-                 EVDW_PME(fr->vdwtype) ||
-                 fr->vdwtype == evdwUSER)
+        else if (ic->vdwtype == evdwCUT ||
+                 EVDW_PME(ic->vdwtype) ||
+                 ic->vdwtype == evdwUSER)
         {
-            if (fr->vdwtype == evdwUSER && fplog)
+            if (ic->vdwtype == evdwUSER && fplog)
             {
                 fprintf(fplog,
                         "WARNING: using dispersion correction with user tables\n");
@@ -2246,12 +2258,12 @@ void calc_enervirdiff(FILE *fplog, int eDispCorr, t_forcerec *fr)
              * can be used here.
              */
 
-            rc3  = fr->rvdw*fr->rvdw*fr->rvdw;
+            rc3  = ic->rvdw*ic->rvdw*ic->rvdw;
             rc9  = rc3*rc3*rc3;
             /* Contribution beyond the cut-off */
             eners[0] += -4.0*M_PI/(3.0*rc3);
             eners[1] +=  4.0*M_PI/(9.0*rc9);
-            if (fr->vdw_modifier == eintmodPOTSHIFT)
+            if (ic->vdw_modifier == eintmodPOTSHIFT)
             {
                 /* Contribution within the cut-off */
                 eners[0] += -4.0*M_PI/(3.0*rc3);
@@ -2265,20 +2277,20 @@ void calc_enervirdiff(FILE *fplog, int eDispCorr, t_forcerec *fr)
         {
             gmx_fatal(FARGS,
                       "Dispersion correction is not implemented for vdw-type = %s",
-                      evdw_names[fr->vdwtype]);
+                      evdw_names[ic->vdwtype]);
         }
 
         /* When we deprecate the group kernels the code below can go too */
-        if (fr->vdwtype == evdwPME && fr->cutoff_scheme == ecutsGROUP)
+        if (ic->vdwtype == evdwPME && fr->cutoff_scheme == ecutsGROUP)
         {
             /* Calculate self-interaction coefficient (assuming that
              * the reciprocal-space contribution is constant in the
              * region that contributes to the self-interaction).
              */
-            fr->enershiftsix = gmx::power6(fr->ewaldcoeff_lj) / 6.0;
+            fr->enershiftsix = gmx::power6(ic->ewaldcoeff_lj) / 6.0;
 
-            eners[0] += -gmx::power3(std::sqrt(M_PI)*fr->ewaldcoeff_lj)/3.0;
-            virs[0]  +=  gmx::power3(std::sqrt(M_PI)*fr->ewaldcoeff_lj);
+            eners[0] += -gmx::power3(std::sqrt(M_PI)*ic->ewaldcoeff_lj)/3.0;
+            virs[0]  +=  gmx::power3(std::sqrt(M_PI)*ic->ewaldcoeff_lj);
         }
 
         fr->enerdiffsix    = eners[0];
@@ -2397,7 +2409,7 @@ void calc_dispcorr(t_inputrec *ir, t_forcerec *fr,
     }
 }
 
-static void low_do_pbc_mtop(FILE *fplog, int ePBC, matrix box,
+static void low_do_pbc_mtop(FILE *fplog, int ePBC, const matrix box,
                             const gmx_mtop_t *mtop, rvec x[],
                             gmx_bool bFirst)
 {
@@ -2445,14 +2457,14 @@ static void low_do_pbc_mtop(FILE *fplog, int ePBC, matrix box,
     sfree(graph);
 }
 
-void do_pbc_first_mtop(FILE *fplog, int ePBC, matrix box,
+void do_pbc_first_mtop(FILE *fplog, int ePBC, const matrix box,
                        const gmx_mtop_t *mtop, rvec x[])
 {
     low_do_pbc_mtop(fplog, ePBC, box, mtop, x, TRUE);
 }
 
-void do_pbc_mtop(FILE *fplog, int ePBC, matrix box,
-                 gmx_mtop_t *mtop, rvec x[])
+void do_pbc_mtop(FILE *fplog, int ePBC, const matrix box,
+                 const gmx_mtop_t *mtop, rvec x[])
 {
     low_do_pbc_mtop(fplog, ePBC, box, mtop, x, FALSE);
 }
@@ -2663,7 +2675,7 @@ void init_md(FILE *fplog,
              t_inputrec *ir, const gmx_output_env_t *oenv,
              const MdrunOptions &mdrunOptions,
              double *t, double *t0,
-             gmx::ArrayRef<real> lambda, int *fep_state, double *lam0,
+             t_state *globalState, double *lam0,
              t_nrnb *nrnb, gmx_mtop_t *mtop,
              gmx_update_t **upd,
              int nfile, const t_filenm fnm[],
@@ -2688,7 +2700,20 @@ void init_md(FILE *fplog,
     }
 
     /* Initialize lambda variables */
-    initialize_lambdas(fplog, ir, fep_state, lambda, lam0);
+    /* TODO: Clean up initialization of fep_state and lambda in t_state.
+     * We currently need to call initialize_lambdas on non-master ranks
+     * to initialize lam0.
+     */
+    if (MASTER(cr))
+    {
+        initialize_lambdas(fplog, ir, &globalState->fep_state, globalState->lambda, lam0);
+    }
+    else
+    {
+        int                      tmpFepState;
+        std::array<real, efptNR> tmpLambda;
+        initialize_lambdas(fplog, ir, &tmpFepState, tmpLambda, lam0);
+    }
 
     // TODO upd is never NULL in practice, but the analysers don't know that
     if (upd)
