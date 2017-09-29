@@ -207,8 +207,10 @@ real morse_bonds(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-        fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
-        fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        if (fda) {
+            fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
+            fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        }
 #endif
     }                                         /*  83 TOTAL    */
     return vtot;
@@ -285,8 +287,10 @@ real cubic_bonds(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-        fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
-        fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        if (fda) {
+            fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
+            fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        }
 #endif
 
     }                                         /*  54 TOTAL    */
@@ -370,8 +374,10 @@ real FENE_bonds(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-        fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
-        fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        if (fda) {
+            fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
+            fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        }
 #endif
 
     }                                         /*  58 TOTAL    */
@@ -475,8 +481,10 @@ real bonds(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-        fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
-        fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        if (fda) {
+            fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
+            fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        }
 #endif
 
     }               /* 59 TOTAL	*/
@@ -592,8 +600,10 @@ real restraint_bonds(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-        fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
-        fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        if (fda) {
+            fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
+            fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        }
 #endif
     }                   /* 59 TOTAL	*/
 
@@ -664,8 +674,10 @@ real polarize(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-        fda->add_bonded(ai, aj, fda::InteractionType_POLAR, pf_forcevector);
-        fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        if (fda) {
+            fda->add_bonded(ai, aj, fda::InteractionType_POLAR, pf_forcevector);
+            fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        }
 #endif
 
     }               /* 59 TOTAL	*/
@@ -745,8 +757,10 @@ real anharm_polarize(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-    fda->add_bonded(ai, aj, fda::InteractionType_POLAR, pf_forcevector);
-    fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+    if (fda) {
+        fda->add_bonded(ai, aj, fda::InteractionType_POLAR, pf_forcevector);
+        fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+    }
 #endif
 
     }               /* 72 TOTAL	*/
@@ -901,9 +915,11 @@ real water_pol(int nbonds,
             }
 
 #ifdef BUILD_WITH_FDA
-            fda->add_bonded(aS, aD, fda::InteractionType_POLAR, pf_forcevector);
-            for (m = 0; (m < DIM); m++) {
-                fda->add_virial_bond(aS, aD, nW[m] * dHH[m] * dOD[m], kdx[XX], kdx[YY], kdx[ZZ]);
+            if (fda) {
+                fda->add_bonded(aS, aD, fda::InteractionType_POLAR, pf_forcevector);
+                for (m = 0; (m < DIM); m++) {
+                    fda->add_virial_bond(aS, aD, nW[m] * dHH[m] * dOD[m], kdx[XX], kdx[YY], kdx[ZZ]);
+                }
             }
 #endif
 
@@ -961,8 +977,10 @@ static real do_1_thole(const rvec xi, const rvec xj, rvec fi, rvec fj,
     }             /* 15 */
 
 #ifdef BUILD_WITH_FDA
-    fda->add_bonded(ai, aj, fda::InteractionType_POLAR, pf_forcevector);
-    fda->add_virial_bond(ai, aj, fscal, r12[XX], r12[YY], r12[ZZ]);
+    if (fda) {
+        fda->add_bonded(ai, aj, fda::InteractionType_POLAR, pf_forcevector);
+        fda->add_virial_bond(ai, aj, fscal, r12[XX], r12[YY], r12[ZZ]);
+    }
 #endif
 
     return v0*v1; /* 1 */
@@ -1108,8 +1126,10 @@ real angles(int nbonds,
             }
 
 #ifdef BUILD_WITH_FDA
-            fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
-            fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+            if (fda) {
+                fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
+                fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+            }
 #endif
 
             if (g != nullptr)
@@ -1330,8 +1350,10 @@ real linear_angles(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-        fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
-        fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+        if (fda) {
+            fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
+            fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+        }
 #endif
 
         va          = 0.5*klin*dr2;
@@ -1440,8 +1462,10 @@ real urey_bradley(int nbonds,
             }
 
 #ifdef BUILD_WITH_FDA
-            fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
-            fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+            if (fda) {
+                fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
+                fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+            }
 #endif
 
             if (g)
@@ -1484,8 +1508,10 @@ real urey_bradley(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-        fda->add_bonded(ai, ak, fda::InteractionType_BOND, pf_forcevector);
-        fda->add_virial_bond(ai, ak, fbond, r_ik[XX], r_ik[YY], r_ik[ZZ]);
+        if (fda) {
+            fda->add_bonded(ai, ak, fda::InteractionType_BOND, pf_forcevector);
+            fda->add_virial_bond(ai, ak, fbond, r_ik[XX], r_ik[YY], r_ik[ZZ]);
+        }
 #endif
 
     }
@@ -1572,8 +1598,10 @@ real quartic_angles(int nbonds,
             }
 
 #ifdef BUILD_WITH_FDA
-            fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
-            fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+            if (fda) {
+                fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
+                fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+            }
 #endif
 
             if (g)
@@ -1779,8 +1807,10 @@ void do_dih_fup(int i, int j, int k, int l, real ddphi,
         rvec_inc(f[l], f_l);          /*  3	*/
 
 #ifdef BUILD_WITH_FDA
-        fda->add_dihedral(i, j, k, l, f_i, f_j, f_k, f_l);
-        fda->add_virial_dihedral(i, j, k, l, f_i, f_k, f_l, r_ij, r_kj, r_kl);
+        if (fda) {
+            fda->add_dihedral(i, j, k, l, f_i, f_j, f_k, f_l);
+            fda->add_virial_dihedral(i, j, k, l, f_i, f_k, f_l, r_ij, r_kj, r_kl);
+        }
 #endif
 
         if (g)
@@ -2399,7 +2429,7 @@ static real low_angres(int nbonds,
                        real lambda, real *dvdlambda,
                        gmx_bool bZAxis
 #ifdef BUILD_WITH_FDA
-                       , FDA *fda
+                       , FDA gmx_unused *fda
 #endif
                       )
 {
@@ -2667,7 +2697,7 @@ real restrangles(int nbonds,
                  const t_mdatoms gmx_unused *md, t_fcdata gmx_unused *fcd,
                  int gmx_unused *global_atom_index
 #ifdef BUILD_WITH_FDA
-                 , FDA *fda
+                 , FDA gmx_unused *fda
 #endif
                 )
 {
@@ -2778,7 +2808,7 @@ real restrdihs(int nbonds,
                const t_mdatoms gmx_unused *md, t_fcdata gmx_unused *fcd,
                int gmx_unused *global_atom_index
 #ifdef BUILD_WITH_FDA
-               , FDA *fda
+               , FDA gmx_unused *fda
 #endif
               )
 {
@@ -2894,7 +2924,7 @@ real cbtdihs(int nbonds,
              const t_mdatoms gmx_unused *md, t_fcdata gmx_unused *fcd,
              int gmx_unused *global_atom_index
 #ifdef BUILD_WITH_FDA
-             , FDA *fda
+             , FDA gmx_unused *fda
 #endif
             )
 {
@@ -3165,7 +3195,7 @@ cmap_dihs(int nbonds,
           const t_mdatoms gmx_unused *md, t_fcdata gmx_unused *fcd,
           int  gmx_unused *global_atom_index
 #ifdef BUILD_WITH_FDA
-          , FDA *fda
+          , FDA gmx_unused *fda
 #endif
          )
 {
@@ -3656,8 +3686,10 @@ real g96bonds(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-        fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
-        fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        if (fda) {
+            fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
+            fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        }
 #endif
 
     }               /* 44 TOTAL	*/
@@ -3739,8 +3771,10 @@ real g96angles(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-        fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
-        fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+        if (fda) {
+            fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
+            fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+        }
 #endif
 
         if (g)
@@ -3821,8 +3855,10 @@ real cross_bond_bond(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
+        if (fda) {
             fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
             fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+        }
 #endif
 
         /* Virial stuff */
@@ -3914,8 +3950,10 @@ real cross_bond_angle(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-        fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
-        fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+        if (fda) {
+            fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
+            fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+        }
 #endif
 
         /* Virial stuff */
@@ -4048,8 +4086,10 @@ real tab_bonds(int nbonds,
         }
 
 #ifdef BUILD_WITH_FDA
-        fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
-        fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        if (fda) {
+            fda->add_bonded(ai, aj, fda::InteractionType_BOND, pf_forcevector);
+            fda->add_virial_bond(ai, aj, fbond, dx[XX], dx[YY], dx[ZZ]);
+        }
 #endif
 
     }               /* 62 TOTAL	*/
@@ -4129,8 +4169,10 @@ real tab_angles(int nbonds,
             }
 
 #ifdef BUILD_WITH_FDA
-            fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
-            fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+            if (fda) {
+                fda->add_angle(ai, aj, ak, f_i, f_j, f_k);
+                fda->add_virial_angle(ai, aj, ak, r_ij, r_kj, f_i, f_k);
+            }
 #endif
 
             if (g)
