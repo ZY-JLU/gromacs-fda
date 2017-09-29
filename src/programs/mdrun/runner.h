@@ -87,12 +87,10 @@ class Mdrunner
         //! Parallelism-related user options.
         gmx_hw_opt_t             hw_opt;
         //! Filenames and properties from command-line argument values.
-        std::array<t_filenm,
 #ifdef BUILD_WITH_FDA
-                             42
+        std::array<t_filenm, 42 > filenames =
 #else
-                             34
-                                > filenames =
+        std::array<t_filenm, 34 > filenames =
 #endif
         {{{ efTPR, nullptr,     nullptr,     ffREAD },
           { efTRN, "-o",        nullptr,     ffWRITE },

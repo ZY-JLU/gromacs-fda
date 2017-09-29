@@ -11,12 +11,6 @@
 #include <limits>
 #include <string>
 #include <vector>
-#include "fda/EnumParser.h"
-#include "fda/FrameType.h"
-#include "fda/Helpers.h"
-#include "fda/ParticleType.h"
-#include "fda/StressType.h"
-#include "gmx_ana.h"
 #include "gromacs/commandline/filenm.h"
 #include "gromacs/commandline/pargs.h"
 #include "gromacs/fileio/confio.h"
@@ -24,6 +18,12 @@
 #include "gromacs/fileio/pdbio.h"
 #include "gromacs/fileio/tpxio.h"
 #include "gromacs/fileio/trxio.h"
+#include "gromacs/gmxana/fda/EnumParser.h"
+#include "gromacs/gmxana/fda/FrameType.h"
+#include "gromacs/gmxana/fda/Helpers.h"
+#include "gromacs/gmxana/fda/ParticleType.h"
+#include "gromacs/gmxana/fda/StressType.h"
+#include "gromacs/gmxana/gmx_ana.h"
 #include "gromacs/math/vectypes.h"
 #include "gromacs/topology/atoms.h"
 #include "gromacs/topology/index.h"
