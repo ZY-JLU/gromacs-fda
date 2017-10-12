@@ -764,8 +764,8 @@ static void ilistcat(int ftype, t_ilist *dest, t_ilist *src, int copies,
 static void pf_ilistcat(int ftype, t_ilist *dest, t_ilist *src, int copies,
                         int dnum, int snum, fda::FDASettings const& fda_settings)
 {
-	// Return if no bonded interaction is needed.
-	if (!(fda_settings.type & (fda::InteractionType_BONDED + fda::InteractionType_NB14))) return;
+    // Return if no bonded interaction is needed.
+    if (!(fda_settings.type & (fda::InteractionType_BONDED + fda::InteractionType_NB14))) return;
 
     int nral, c, i, a, atomIdx;
     char needed;
