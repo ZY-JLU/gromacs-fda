@@ -128,8 +128,8 @@ texture<float, 1, cudaReadModeElementType> coulomb_tab_texref;
  * build-time checks to prevent this, the user could manually tweaks nvcc flags
  * which would lead to buggy kernels getting compiled.
  */
-#if GMX_PTX_ARCH > 0 && GMX_PTX_ARCH <= 210
-#error Due to an CUDA compiler bug, the CUDA non-bonded module can not be compiled with multiple compilation units for CC 2.x devices. If you have changed the nvcc flags manually, either use the GMX_CUDA_TARGET_* variables instead or set GMX_CUDA_NB_SINGLE_COMPILATION_UNIT=ON CMake option.
+#if GMX_PTX_ARCH > 0 && GMX_PTX_ARCH <= 210 && !defined(__clang__)
+#error Due to an CUDA nvcc compiler bug, the CUDA non-bonded module can not be compiled with multiple compilation units for CC 2.x devices. If you have changed the nvcc flags manually, either use the GMX_CUDA_TARGET_* variables instead or set GMX_CUDA_NB_SINGLE_COMPILATION_UNIT=ON CMake option.
 #endif
 #endif /* GMX_CUDA_NB_SINGLE_COMPILATION_UNIT */
 
@@ -384,8 +384,7 @@ void nbnxn_gpu_launch_kernel(gmx_nbnxn_cuda_t       *nb,
     /* beginning of timed HtoD section */
     if (bDoTime)
     {
-        stat = cudaEventRecord(t->start_nb_h2d[iloc], stream);
-        CU_RET_ERR(stat, "cudaEventRecord failed");
+        t->nb_h2d[iloc].openTimingRegion(stream);
     }
 
     /* HtoD x, q */
@@ -394,8 +393,7 @@ void nbnxn_gpu_launch_kernel(gmx_nbnxn_cuda_t       *nb,
 
     if (bDoTime)
     {
-        stat = cudaEventRecord(t->stop_nb_h2d[iloc], stream);
-        CU_RET_ERR(stat, "cudaEventRecord failed");
+        t->nb_h2d[iloc].closeTimingRegion(stream);
     }
 
     /* When we get here all misc operations issues in the local stream as well as
@@ -433,8 +431,7 @@ void nbnxn_gpu_launch_kernel(gmx_nbnxn_cuda_t       *nb,
     /* beginning of timed nonbonded calculation section */
     if (bDoTime)
     {
-        stat = cudaEventRecord(t->start_nb_k[iloc], stream);
-        CU_RET_ERR(stat, "cudaEventRecord failed");
+        t->nb_k[iloc].openTimingRegion(stream);
     }
 
     /* get the pointer to the kernel flavor we need to use */
@@ -490,8 +487,7 @@ void nbnxn_gpu_launch_kernel(gmx_nbnxn_cuda_t       *nb,
 
     if (bDoTime)
     {
-        stat = cudaEventRecord(t->stop_nb_k[iloc], stream);
-        CU_RET_ERR(stat, "cudaEventRecord failed");
+        t->nb_k[iloc].closeTimingRegion(stream);
     }
 
 #if (defined(WIN32) || defined( _WIN32 ))
@@ -517,8 +513,6 @@ void nbnxn_gpu_launch_kernel_pruneonly(gmx_nbnxn_cuda_t       *nb,
                                        int                     iloc,
                                        int                     numParts)
 {
-    cudaError_t          stat;
-
     cu_atomdata_t       *adat    = nb->atdat;
     cu_nbparam_t        *nbp     = nb->nbparam;
     cu_plist_t          *plist   = nb->plist[iloc];
@@ -569,18 +563,16 @@ void nbnxn_gpu_launch_kernel_pruneonly(gmx_nbnxn_cuda_t       *nb,
         return;
     }
 
-    cudaEvent_t startEvent, stopEvent;
+    GpuRegionTimer *timer = nullptr;
     if (bDoTime)
     {
-        startEvent = (plist->haveFreshList ? t->start_prune_k[iloc] : t->start_rollingPrune_k[iloc]);
-        stopEvent  = (plist->haveFreshList ? t->stop_prune_k[iloc]  : t->stop_rollingPrune_k[iloc]);
+        timer = &(plist->haveFreshList ? t->prune_k[iloc] : t->rollingPrune_k[iloc]);
     }
 
     /* beginning of timed prune calculation section */
     if (bDoTime)
     {
-        stat = cudaEventRecord(startEvent, stream);
-        CU_RET_ERR(stat, "cudaEventRecord failed");
+        timer->openTimingRegion(stream);
     }
 
     /* Kernel launch config:
@@ -654,8 +646,7 @@ void nbnxn_gpu_launch_kernel_pruneonly(gmx_nbnxn_cuda_t       *nb,
 
     if (bDoTime)
     {
-        stat = cudaEventRecord(stopEvent, stream);
-        CU_RET_ERR(stat, "cudaEventRecord failed");
+        timer->closeTimingRegion(stream);
     }
 
 #if (defined(WIN32) || defined( _WIN32 ))
@@ -671,24 +662,9 @@ void nbnxn_gpu_launch_cpyback(gmx_nbnxn_cuda_t       *nb,
 {
     cudaError_t stat;
     int         adat_begin, adat_len; /* local/nonlocal offset and length used for xq and f */
-    int         iloc = -1;
 
     /* determine interaction locality from atom locality */
-    if (LOCAL_A(aloc))
-    {
-        iloc = eintLocal;
-    }
-    else if (NONLOCAL_A(aloc))
-    {
-        iloc = eintNonlocal;
-    }
-    else
-    {
-        char stmp[STRLEN];
-        sprintf(stmp, "Invalid atom locality passed (%d); valid here is only "
-                "local (%d) or nonlocal (%d)", aloc, eatLocal, eatNonlocal);
-        gmx_incons(stmp);
-    }
+    int              iloc = gpuAtomToInteractionLocality(aloc);
 
     cu_atomdata_t   *adat    = nb->atdat;
     cu_timers_t     *t       = nb->timers;
@@ -704,23 +680,12 @@ void nbnxn_gpu_launch_cpyback(gmx_nbnxn_cuda_t       *nb,
         return;
     }
 
-    /* calculate the atom data index range based on locality */
-    if (LOCAL_A(aloc))
-    {
-        adat_begin  = 0;
-        adat_len    = adat->natoms_local;
-    }
-    else
-    {
-        adat_begin  = adat->natoms_local;
-        adat_len    = adat->natoms - adat->natoms_local;
-    }
+    getGpuAtomRange(adat, aloc, adat_begin, adat_len);
 
     /* beginning of timed D2H section */
     if (bDoTime)
     {
-        stat = cudaEventRecord(t->start_nb_d2h[iloc], stream);
-        CU_RET_ERR(stat, "cudaEventRecord failed");
+        t->nb_d2h[iloc].openTimingRegion(stream);
     }
 
     /* With DD the local D2H transfer can only start after the non-local
@@ -767,8 +732,7 @@ void nbnxn_gpu_launch_cpyback(gmx_nbnxn_cuda_t       *nb,
 
     if (bDoTime)
     {
-        stat = cudaEventRecord(t->stop_nb_d2h[iloc], stream);
-        CU_RET_ERR(stat, "cudaEventRecord failed");
+        t->nb_d2h[iloc].closeTimingRegion(stream);
     }
 }
 
@@ -785,9 +749,9 @@ void nbnxn_gpu_launch_cpyback(gmx_nbnxn_cuda_t       *nb,
  * \param[inout] timings  GPU task timing data
  * \param[in] iloc        interaction locality
  */
-static void countPruneKernelTime(const cu_timers_t   *timers,
-                                 gmx_wallclock_gpu_t *timings,
-                                 const int            iloc)
+static void countPruneKernelTime(cu_timers_t               *timers,
+                                 gmx_wallclock_gpu_nbnxn_t *timings,
+                                 const int                  iloc)
 {
     // We might have not done any pruning (e.g. if we skipped with empty domains).
     if (!timers->didPrune[iloc] && !timers->didRollingPrune[iloc])
@@ -798,14 +762,12 @@ static void countPruneKernelTime(const cu_timers_t   *timers,
     if (timers->didPrune[iloc])
     {
         timings->pruneTime.c++;
-        timings->pruneTime.t += cu_event_elapsed(timers->start_prune_k[iloc],
-                                                 timers->stop_prune_k[iloc]);
+        timings->pruneTime.t += timers->prune_k[iloc].getLastRangeTime();
     }
     if (timers->didRollingPrune[iloc])
     {
         timings->dynamicPruneTime.c++;
-        timings->dynamicPruneTime.t += cu_event_elapsed(timers->start_rollingPrune_k[iloc],
-                                                        timers->stop_rollingPrune_k[iloc]);
+        timings->dynamicPruneTime.t += timers->rollingPrune_k[iloc].getLastRangeTime();
     }
 }
 
@@ -815,32 +777,17 @@ void nbnxn_gpu_wait_for_gpu(gmx_nbnxn_cuda_t *nb,
 {
     /* NOTE:  only implemented for single-precision at this time */
     cudaError_t stat;
-    int         iloc = -1;
 
     /* determine interaction locality from atom locality */
-    if (LOCAL_A(aloc))
-    {
-        iloc = eintLocal;
-    }
-    else if (NONLOCAL_A(aloc))
-    {
-        iloc = eintNonlocal;
-    }
-    else
-    {
-        char stmp[STRLEN];
-        sprintf(stmp, "Invalid atom locality passed (%d); valid here is only "
-                "local (%d) or nonlocal (%d)", aloc, eatLocal, eatNonlocal);
-        gmx_incons(stmp);
-    }
+    int iloc = gpuAtomToInteractionLocality(aloc);
 
-    cu_plist_t                 *plist    = nb->plist[iloc];
-    cu_timers_t                *timers   = nb->timers;
-    struct gmx_wallclock_gpu_t *timings  = nb->timings;
-    nb_staging                  nbst     = nb->nbst;
+    cu_plist_t                       *plist    = nb->plist[iloc];
+    cu_timers_t                      *timers   = nb->timers;
+    struct gmx_wallclock_gpu_nbnxn_t *timings  = nb->timings;
+    nb_staging                        nbst     = nb->nbst;
 
-    bool                        bCalcEner   = flags & GMX_FORCE_ENERGY;
-    bool                        bCalcFshift = flags & GMX_FORCE_VIRIAL;
+    bool                              bCalcEner   = flags & GMX_FORCE_ENERGY;
+    bool                              bCalcFshift = flags & GMX_FORCE_VIRIAL;
 
     /* turn energy calculation always on/off (for debugging/testing only) */
     bCalcEner = (bCalcEner || always_ener) && !never_ener;
@@ -868,14 +815,11 @@ void nbnxn_gpu_wait_for_gpu(gmx_nbnxn_cuda_t *nb,
             }
 
             /* kernel timings */
-            timings->ktime[plist->haveFreshList ? 1 : 0][bCalcEner ? 1 : 0].t +=
-                cu_event_elapsed(timers->start_nb_k[iloc], timers->stop_nb_k[iloc]);
+            timings->ktime[plist->haveFreshList ? 1 : 0][bCalcEner ? 1 : 0].t += timers->nb_k[iloc].getLastRangeTime();
 
             /* X/q H2D and F D2H timings */
-            timings->nb_h2d_t += cu_event_elapsed(timers->start_nb_h2d[iloc],
-                                                  timers->stop_nb_h2d[iloc]);
-            timings->nb_d2h_t += cu_event_elapsed(timers->start_nb_d2h[iloc],
-                                                  timers->stop_nb_d2h[iloc]);
+            timings->nb_h2d_t += timers->nb_h2d[iloc].getLastRangeTime();
+            timings->nb_d2h_t += timers->nb_d2h[iloc].getLastRangeTime();
 
             /* Count the pruning kernel times for both cases:1st pass (at search step)
                and rolling pruning (if called at the previous step).
@@ -892,12 +836,10 @@ void nbnxn_gpu_wait_for_gpu(gmx_nbnxn_cuda_t *nb,
                 if (LOCAL_A(aloc))
                 {
                     timings->pl_h2d_c++;
-                    timings->pl_h2d_t += cu_event_elapsed(timers->start_atdat,
-                                                          timers->stop_atdat);
+                    timings->pl_h2d_t += timers->atdat.getLastRangeTime();
                 }
 
-                timings->pl_h2d_t += cu_event_elapsed(timers->start_pl_h2d[iloc],
-                                                      timers->stop_pl_h2d[iloc]);
+                timings->pl_h2d_t += timers->pl_h2d[iloc].getLastRangeTime();
 
                 /* Clear the timing flag for the next step */
                 timers->didPairlistH2D[iloc] = false;
@@ -934,19 +876,16 @@ void nbnxn_gpu_wait_for_gpu(gmx_nbnxn_cuda_t *nb,
 
 const struct texture<float, 1, cudaReadModeElementType> &nbnxn_cuda_get_nbfp_texref()
 {
-    assert(!c_disableCudaTextures);
     return nbfp_texref;
 }
 
 const struct texture<float, 1, cudaReadModeElementType> &nbnxn_cuda_get_nbfp_comb_texref()
 {
-    assert(!c_disableCudaTextures);
     return nbfp_comb_texref;
 }
 
 const struct texture<float, 1, cudaReadModeElementType> &nbnxn_cuda_get_coulomb_tab_texref()
 {
-    assert(!c_disableCudaTextures);
     return coulomb_tab_texref;
 }
 

@@ -57,6 +57,7 @@
 #include "gromacs/commandline/filenm.h"
 #include "gromacs/domdec/domdec.h"
 #include "gromacs/domdec/domdec_struct.h"
+#include "gromacs/ewald/ewald-utils.h"
 #include "gromacs/ewald/pme.h"
 #include "gromacs/fileio/checkpoint.h"
 #include "gromacs/fileio/oenv.h"
@@ -68,7 +69,6 @@
 #include "gromacs/hardware/printhardware.h"
 #include "gromacs/listed-forces/disre.h"
 #include "gromacs/listed-forces/orires.h"
-#include "gromacs/math/calculate-ewald-splitting-coefficient.h"
 #include "gromacs/math/functions.h"
 #include "gromacs/math/utilities.h"
 #include "gromacs/math/vec.h"
@@ -93,13 +93,10 @@
 #include "gromacs/mdrunutility/mdmodules.h"
 #include "gromacs/mdrunutility/threadaffinity.h"
 #include "gromacs/mdtypes/commrec.h"
-#include "gromacs/mdtypes/edsamhistory.h"
-#include "gromacs/mdtypes/energyhistory.h"
 #include "gromacs/mdtypes/inputrec.h"
 #include "gromacs/mdtypes/md_enums.h"
 #include "gromacs/mdtypes/observableshistory.h"
 #include "gromacs/mdtypes/state.h"
-#include "gromacs/mdtypes/swaphistory.h"
 #include "gromacs/pbcutil/pbc.h"
 #include "gromacs/pulling/pull.h"
 #include "gromacs/pulling/pull_rotation.h"
@@ -485,6 +482,9 @@ int Mdrunner::mdrunner()
     bool tryUsePhysicalGpu   = (strncmp(nbpu_opt, "auto", 4) == 0) && hw_opt.gpuIdTaskAssignment.empty() && (emulateGpuNonbonded == EmulateGpuNonbonded::No);
     GMX_RELEASE_ASSERT(!(forceUsePhysicalGpu && tryUsePhysicalGpu), "Must either force use of "
                        "GPUs for short-ranged interactions, or try to use them, not both.");
+    const PmeRunMode pmeRunMode = PmeRunMode::CPU;
+    //TODO this is a placeholder as PME on GPU is not permitted yet
+    //TODO should there exist a PmeRunMode::None value for consistency?
 
     // Here we assume that SIMMASTER(cr) does not change even after the
     // threads are started.
@@ -977,7 +977,6 @@ int Mdrunner::mdrunner()
                       opt2fn("-table", nfile, fnm),
                       opt2fn("-tablep", nfile, fnm),
                       getFilenm("-tableb", nfile, fnm),
-                      nbpu_opt,
                       shortRangedDeviceInfo,
                       FALSE,
                       pforce);
@@ -996,10 +995,10 @@ int Mdrunner::mdrunner()
          * mdatoms is not filled with atom data,
          * as this can not be done now with domain decomposition.
          */
-        mdatoms = init_mdatoms(fplog, mtop, inputrec->efep != efepNO);
+        mdatoms = init_mdatoms(fplog, *mtop, *inputrec);
 
         /* Initialize the virtual site communication */
-        vsite = init_vsite(mtop, cr, FALSE);
+        vsite = initVsite(*mtop, cr);
 
         calc_shifts(box, fr->shift_vec);
 
@@ -1009,11 +1008,10 @@ int Mdrunner::mdrunner()
         if (!inputrec->bContinuation && MASTER(cr) &&
             !(inputrec->ePBC != epbcNONE && inputrec->bPeriodicMols))
         {
-            rvec *xGlobal = as_rvec_array(globalState->x.data());
-
             /* Make molecules whole at start of run */
             if (fr->ePBC != epbcNONE)
             {
+                rvec *xGlobal = as_rvec_array(globalState->x.data());
                 do_pbc_first_mtop(fplog, inputrec->ePBC, box, mtop, xGlobal);
             }
             if (vsite)
@@ -1022,7 +1020,7 @@ int Mdrunner::mdrunner()
                  * for the initial distribution in the domain decomposition
                  * and for the initial shell prediction.
                  */
-                construct_vsites_mtop(vsite, mtop, xGlobal);
+                constructVsitesGlobal(*mtop, globalState->x);
             }
         }
 
@@ -1096,11 +1094,13 @@ int Mdrunner::mdrunner()
         {
             try
             {
+                gmx_device_info_t *pmeGpuInfo = nullptr;
                 status = gmx_pme_init(pmedata, cr, npme_major, npme_minor, inputrec,
                                       mtop ? mtop->natoms : 0, nChargePerturbed, nTypePerturbed,
                                       mdrunOptions.reproducible,
                                       ewaldcoeff_q, ewaldcoeff_lj,
-                                      nthreads_pme);
+                                      nthreads_pme,
+                                      pmeRunMode, nullptr, pmeGpuInfo, mdlog);
             }
             GMX_CATCH_ALL_AND_EXIT_WITH_FATAL_ERROR;
             if (status != 0)
@@ -1191,7 +1191,7 @@ int Mdrunner::mdrunner()
         GMX_RELEASE_ASSERT(pmedata, "pmedata was NULL while cr->duty was not DUTY_PP");
         /* do PME only */
         walltime_accounting = walltime_accounting_init(gmx_omp_nthreads_get(emntPME));
-        gmx_pmeonly(*pmedata, cr, nrnb, wcycle, walltime_accounting, ewaldcoeff_q, ewaldcoeff_lj, inputrec);
+        gmx_pmeonly(*pmedata, cr, nrnb, wcycle, walltime_accounting, inputrec, pmeRunMode);
     }
 
     wallcycle_stop(wcycle, ewcRUN);
@@ -1202,6 +1202,7 @@ int Mdrunner::mdrunner()
     finish_run(fplog, mdlog, cr,
                inputrec, nrnb, wcycle, walltime_accounting,
                fr ? fr->nbv : nullptr,
+               fr ? fr->pmedata : nullptr,
                EI_DYNAMICS(inputrec->eI) && !MULTISIM(cr));
 
     // Free PME data

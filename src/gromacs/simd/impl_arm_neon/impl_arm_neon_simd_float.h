@@ -101,7 +101,7 @@ class SimdFIBool
 };
 
 static inline SimdFloat gmx_simdcall
-simdLoad(const float *m)
+simdLoad(const float *m, SimdFloatTag = {})
 {
     assert(std::size_t(m) % 16 == 0);
     return {
@@ -117,7 +117,7 @@ store(float *m, SimdFloat a)
 }
 
 static inline SimdFloat gmx_simdcall
-simdLoadU(const float *m)
+simdLoadU(const float *m, SimdFloatTag = {})
 {
     return {
                vld1q_f32(m)
@@ -139,7 +139,7 @@ setZeroF()
 }
 
 static inline SimdFInt32 gmx_simdcall
-simdLoadFI(const std::int32_t * m)
+simdLoad(const std::int32_t * m, SimdFInt32Tag)
 {
     assert(std::size_t(m) % 16 == 0);
     return {
@@ -155,7 +155,7 @@ store(std::int32_t * m, SimdFInt32 a)
 }
 
 static inline SimdFInt32 gmx_simdcall
-simdLoadUFI(const std::int32_t *m)
+simdLoadU(const std::int32_t *m, SimdFInt32Tag)
 {
     return {
                vld1q_s32(m)
@@ -310,6 +310,10 @@ rsqrt(SimdFloat x)
     };
 }
 
+// The SIMD implementation seems to overflow when we square lu for
+// values close to FLOAT_MAX, so we fall back on the version in
+// simd_math.h, which is probably slightly slower.
+#if GMX_SIMD_HAVE_NATIVE_RSQRT_ITER_FLOAT
 static inline SimdFloat gmx_simdcall
 rsqrtIter(SimdFloat lu, SimdFloat x)
 {
@@ -317,6 +321,7 @@ rsqrtIter(SimdFloat lu, SimdFloat x)
                vmulq_f32(lu.simdInternal_, vrsqrtsq_f32(vmulq_f32(lu.simdInternal_, lu.simdInternal_), x.simdInternal_))
     };
 }
+#endif
 
 static inline SimdFloat gmx_simdcall
 rcp(SimdFloat x)

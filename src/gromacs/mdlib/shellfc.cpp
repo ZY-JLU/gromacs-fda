@@ -896,7 +896,7 @@ static void init_adir(FILE *log, gmx_shellfc_t *shfc,
                       rvec *x_old, rvec *x_init, rvec *x,
                       rvec *f, rvec *acc_dir,
                       gmx_bool bMolPBC, matrix box,
-                      gmx::ConstArrayRef<real> lambda, real *dvdlambda,
+                      gmx::ArrayRef<const real> lambda, real *dvdlambda,
                       t_nrnb *nrnb)
 {
     rvec           *xnold, *xnew;
@@ -1031,8 +1031,8 @@ void relax_shell_flexcon(FILE *fplog, t_commrec *cr, gmx_bool bVerbose,
 
     for (i = 0; (i < 2); i++)
     {
-        shfc->x[i].resize(nat + 1);
-        shfc->f[i].resize(nat + 1);
+        shfc->x[i].resize(gmx::paddedRVecVectorSize(nat));
+        shfc->f[i].resize(gmx::paddedRVecVectorSize(nat));
     }
 
     /* Create pointer that we can swap */

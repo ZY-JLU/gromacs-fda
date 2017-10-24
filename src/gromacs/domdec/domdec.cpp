@@ -1369,7 +1369,7 @@ static void dd_resize_state(t_state *state, PaddedRVecVector *f, int natoms)
         /* We need to allocate one element extra, since we might use
          * (unaligned) 4-wide SIMD loads to access rvec entries.
          */
-        f->resize(natoms + 1);
+        f->resize(paddedRVecVectorSize(natoms));
     }
 }
 
@@ -9580,7 +9580,7 @@ void dd_partition_system(FILE                *fplog,
                                   as_rvec_array(state_local->x.data()),
                                   ncg_moved, bRedist ? comm->moved : nullptr,
                                   fr->nbv->grp[eintLocal].kernel_type,
-                                  fr->nbv->grp[eintLocal].nbat);
+                                  fr->nbv->nbat);
 
                 nbnxn_get_ncells(fr->nbv->nbs, &ncells_new[XX], &ncells_new[YY]);
                 break;
@@ -9703,7 +9703,7 @@ void dd_partition_system(FILE                *fplog,
 
     dd_resize_state(state_local, f, state_local->natoms);
 
-    if (fr->bF_NoVirSum)
+    if (fr->haveDirectVirialContributions)
     {
         if (vsite && vsite->n_intercg_vsite)
         {

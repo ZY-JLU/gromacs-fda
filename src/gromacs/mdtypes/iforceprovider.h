@@ -57,6 +57,7 @@ namespace gmx
 
 template <typename T>
 class ArrayRef;
+class ForceWithVirial;
 
 /*! \libinternal \brief
  * Interface for a component that provides forces during MD.
@@ -68,6 +69,11 @@ class ArrayRef;
  * The interface most likely requires additional generalization for use in
  * other modules than the current electric field implementation.
  *
+ * The forces that are produced by force providers are not taken into account
+ * in the calculation of the virial. When applicable, the provider should
+ * compute its own virial contribution.
+ * \todo Extend this interface with a virial container and flag if the virial is needed here
+ *
  * \inlibraryapi
  * \ingroup module_mdtypes
  */
@@ -77,19 +83,19 @@ class IForceProvider
         /*! \brief
          * Computes forces.
          *
-         * \param[in]    cr      Communication record for parallel operations
-         * \param[in]    mdatoms Atom information
-         * \param[in]    box     The box
-         * \param[in]    t       The actual time in the simulation (ps)
-         * \param[in]    x       The coordinates
-         * \param[inout] force   The forces
+         * \param[in]    cr               Communication record for parallel operations
+         * \param[in]    mdatoms          Atom information
+         * \param[in]    box              The box
+         * \param[in]    t                The actual time in the simulation (ps)
+         * \param[in]    x                The coordinates
+         * \param[inout] forceWithVirial  The forces and virial
          */
         virtual void calculateForces(const t_commrec          *cr,
                                      const t_mdatoms          *mdatoms,
                                      const matrix              box,
                                      double                    t,
                                      const rvec               *x,
-                                     gmx::ArrayRef<gmx::RVec>  force) = 0;
+                                     gmx::ForceWithVirial     *forceWithVirial) = 0;
 
     protected:
         ~IForceProvider() {}
@@ -117,13 +123,9 @@ struct ForceProviders
          * Adds a provider.
          */
         void addForceProvider(gmx::IForceProvider *provider);
-        /*! \brief
-         * Adds a provider whose forces should not contribute to the virial.
-         */
-        void addForceProviderWithoutVirialContribution(gmx::IForceProvider *provider);
 
-        //! Whether there are modules that do not contribute to the virial.
-        bool hasForcesWithoutVirialContribution() const;
+        //! Whether there are modules added.
+        bool hasForceProvider() const;
 
         //! Computes forces.
         void calculateForces(const t_commrec          *cr,
@@ -131,8 +133,7 @@ struct ForceProviders
                              const matrix              box,
                              double                    t,
                              const rvec               *x,
-                             gmx::ArrayRef<gmx::RVec>  force,
-                             gmx::ArrayRef<gmx::RVec>  f_novirsum) const;
+                             gmx::ForceWithVirial     *forceWithVirial) const;
 
     private:
         class Impl;
