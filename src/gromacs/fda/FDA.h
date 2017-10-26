@@ -10,7 +10,6 @@
 
 #ifdef BUILD_WITH_FDA
 
-#include "gromacs/math/functions.h"
 #include "gromacs/math/vectypes.h"
 #include "gromacs/utility/real.h"
 
@@ -19,6 +18,7 @@
 #include <vector>
 #include "FDABase.h"
 #include "FDASettings.h"
+#include "gromacs/math/functions.h"
 #include "gromacs/math/paddedvector.h"
 #include "gromacs/mdtypes/inputrec.h"
 #include "InteractionType.h"

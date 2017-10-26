@@ -387,7 +387,6 @@ struct t_forcerec {
     real print_force;
 
 #ifdef BUILD_WITH_FDA
-    /* FDA */
     struct FDA *fda;
 #endif
 
