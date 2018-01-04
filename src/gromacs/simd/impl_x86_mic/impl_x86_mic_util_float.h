@@ -70,11 +70,11 @@ gatherLoadBySimdIntTranspose(const float *  base,
     // but multiplication otherwise.
     if (align == 4)
     {
-        simdoffset = simdoffset << 2;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 2);
     }
     else if (align == 8)
     {
-        simdoffset = simdoffset << 3;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 3);
     }
     else
     {
@@ -108,11 +108,11 @@ gatherLoadUBySimdIntTranspose(const float *  base,
     {
         if (align == 4)
         {
-            simdoffset = simdoffset << 2;
+            simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 2);
         }
         else if (align == 8)
         {
-            simdoffset = simdoffset << 3;
+            simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 3);
         }
         else
         {
@@ -178,11 +178,11 @@ gatherLoadUTranspose(const float *        base,
     // but multiplication otherwise.
     if (align == 4)
     {
-        simdoffset = simdoffset << 2;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 2);
     }
     else if (align == 8)
     {
-        simdoffset = simdoffset << 3;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 3);
     }
     else
     {
@@ -214,11 +214,11 @@ transposeScatterStoreU(float *              base,
     // but multiplication otherwise.
     if (align == 4)
     {
-        simdoffset = simdoffset << 2;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 2);
     }
     else if (align == 8)
     {
-        simdoffset = simdoffset << 3;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 3);
     }
     else
     {
@@ -347,7 +347,7 @@ loadDuplicateHsimd(const float * m)
 }
 
 static inline SimdFloat gmx_simdcall
-load1DualHsimd(const float * m)
+loadU1DualHsimd(const float * m)
 {
     return _mm512_mask_extload_ps(_mm512_extload_ps(m, _MM_UPCONV_PS_NONE, _MM_BROADCAST_1X16, _MM_HINT_NONE), _mm512_int2mask(0xFF00),
                                   m+1, _MM_UPCONV_PS_NONE, _MM_BROADCAST_1X16, _MM_HINT_NONE);

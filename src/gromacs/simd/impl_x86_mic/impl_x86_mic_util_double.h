@@ -70,11 +70,11 @@ gatherLoadBySimdIntTranspose(const double *  base,
     // but multiplication otherwise.
     if (align == 4)
     {
-        simdoffset = simdoffset << 2;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 2);
     }
     else if (align == 8)
     {
-        simdoffset = simdoffset << 3;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 3);
     }
     else
     {
@@ -99,15 +99,15 @@ gatherLoadUBySimdIntTranspose(const double *  base,
     // but multiplication otherwise.
     if (align == 2)
     {
-        simdoffset = simdoffset << 1;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 1);
     }
     else if (align == 4)
     {
-        simdoffset = simdoffset << 2;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 2);
     }
     else if (align == 8)
     {
-        simdoffset = simdoffset << 3;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 3);
     }
     else
     {
@@ -176,11 +176,11 @@ gatherLoadUTranspose(const double *        base,
     // but multiplication otherwise.
     if (align == 4)
     {
-        simdoffset = simdoffset << 2;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 2);
     }
     else if (align == 8)
     {
-        simdoffset = simdoffset << 3;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 3);
     }
     else
     {
@@ -211,11 +211,11 @@ transposeScatterStoreU(double *            base,
     // but multiplication otherwise.
     if (align == 4)
     {
-        simdoffset = simdoffset << 2;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 2);
     }
     else if (align == 8)
     {
-        simdoffset = simdoffset << 3;
+        simdoffset.simdInternal_ = _mm512_slli_epi32(simdoffset.simdInternal_, 3);
     }
     else
     {
@@ -346,7 +346,7 @@ loadDuplicateHsimd(const double * m)
 }
 
 static inline SimdDouble gmx_simdcall
-load1DualHsimd(const double * m)
+loadU1DualHsimd(const double * m)
 {
     return _mm512_mask_extload_pd(_mm512_extload_pd(m, _MM_UPCONV_PD_NONE, _MM_BROADCAST_1X8, _MM_HINT_NONE), _mm512_int2mask(0xF0),
                                   m+1, _MM_UPCONV_PD_NONE, _MM_BROADCAST_1X8, _MM_HINT_NONE);

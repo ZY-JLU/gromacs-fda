@@ -60,6 +60,7 @@
 #include "gromacs/utility/cstringutil.h"
 #include "gromacs/utility/fatalerror.h"
 #include "gromacs/utility/smalloc.h"
+#include "gromacs/utility/stringutil.h"
 
 /*! \brief Helper macro for error handling */
 #define CALLOCLFUNC_LOGERROR(func, err_str, retval) { \
@@ -160,6 +161,24 @@ static ocl_vendor_id_t get_vendor_id(char *vendor_name)
     return OCL_VENDOR_UNKNOWN;
 }
 
+
+//! This function is documented in the header file
+bool canDetectGpus()
+{
+    cl_uint numPlatforms = -1;
+    cl_int  status       = clGetPlatformIDs(0, nullptr, &numPlatforms);
+    GMX_ASSERT(status != CL_INVALID_VALUE, "Incorrect call of clGetPlatformIDs detected");
+    if (status == CL_PLATFORM_NOT_FOUND_KHR)
+    {
+        // No valid ICDs found
+        return false;
+    }
+    GMX_RELEASE_ASSERT(status == CL_SUCCESS,
+                       gmx::formatString("An unexpected value was returned from clGetPlatformIDs %u: %s",
+                                         status, ocl_get_error_string(status).c_str()).c_str());
+    bool foundPlatform = (numPlatforms > 0);
+    return foundPlatform;
+}
 
 //! This function is documented in the header file
 int detect_gpus(gmx_gpu_info_t *gpu_info, char *err_str)
@@ -343,12 +362,20 @@ void free_gpu_info(const gmx_gpu_info_t gmx_unused *gpu_info)
 }
 
 //! This function is documented in the header file
-bool isGpuCompatible(const gmx_gpu_info_t &gpu_info,
-                     int                   index)
+std::vector<int> getCompatibleGpus(const gmx_gpu_info_t &gpu_info)
 {
-    return (index >= gpu_info.n_dev ?
-            false :
-            gpu_info.gpu_dev[index].stat == egpuCompatible);
+    // Possible minor over-allocation here, but not important for anything
+    std::vector<int> compatibleGpus;
+    compatibleGpus.reserve(gpu_info.n_dev);
+    for (int i = 0; i < gpu_info.n_dev; i++)
+    {
+        assert(gpu_info.gpu_dev);
+        if (gpu_info.gpu_dev[i].stat == egpuCompatible)
+        {
+            compatibleGpus.push_back(i);
+        }
+    }
+    return compatibleGpus;
 }
 
 //! This function is documented in the header file
@@ -393,7 +420,6 @@ void get_gpu_device_info_string(char *s, const gmx_gpu_info_t &gpu_info, int ind
 
 //! This function is documented in the header file
 void init_gpu(const gmx::MDLogger               & /*mdlog*/,
-              int                               /* rank */,
               gmx_device_info_t                *deviceInfo)
 {
     assert(deviceInfo);
