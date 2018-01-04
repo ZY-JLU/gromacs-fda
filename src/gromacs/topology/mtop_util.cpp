@@ -761,6 +761,7 @@ static void ilistcat(int ftype, t_ilist *dest, t_ilist *src, int copies,
     }
 }
 
+#ifdef BUILD_WITH_FDA
 static void pf_ilistcat(int ftype, t_ilist *dest, t_ilist *src, int copies,
                         int dnum, int snum, fda::FDASettings const& fda_settings)
 {
@@ -830,6 +831,7 @@ static void pf_ilistcat(int ftype, t_ilist *dest, t_ilist *src, int copies,
 
     sfree(tmp);
 }
+#endif
 
 static void set_posres_params(t_idef *idef, gmx_molblock_t *molb,
                               int i0, int a_offset)
