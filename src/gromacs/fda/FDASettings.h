@@ -48,12 +48,12 @@ struct FDASettings
 
     /// Returns true if atom i is in fda groups
     bool atom_in_groups(int i) const {
-        return (sys_in_group1[i] or sys_in_group2[i]);
+        return (sys_in_group1[i] || sys_in_group2[i]);
     }
 
     /// Returns true if atoms i and j are in fda groups
     bool atoms_in_groups(int i, int j) const {
-        return ((sys_in_group1[i] and sys_in_group2[j]) or (sys_in_group1[j] and sys_in_group2[i]));
+        return ((sys_in_group1[i] && sys_in_group2[j]) || (sys_in_group1[j] && sys_in_group2[i]));
     }
 
     /// Makes a list of residue numbers based on atom numbers of this group.
@@ -71,19 +71,19 @@ struct FDASettings
     int get_atom2residue(int i) const { return atom_2_residue[i]; }
 
     bool compatibility_mode(ResultType const& r) const {
-        return r == ResultType::COMPAT_BIN or r == ResultType::COMPAT_ASCII;
+        return r == ResultType::COMPAT_BIN || r == ResultType::COMPAT_ASCII;
     }
 
     bool stress_mode(ResultType const& r) const {
-        return r == ResultType::PUNCTUAL_STRESS or r == ResultType::VIRIAL_STRESS or r == ResultType::VIRIAL_STRESS_VON_MISES;
+        return r == ResultType::PUNCTUAL_STRESS || r == ResultType::VIRIAL_STRESS || r == ResultType::VIRIAL_STRESS_VON_MISES;
     }
 
     bool PF_or_PS_mode(ResultType const& r) const {
-        return r == ResultType::PAIRWISE_FORCES_VECTOR or r == ResultType::PAIRWISE_FORCES_SCALAR or r == ResultType::PUNCTUAL_STRESS;
+        return r == ResultType::PAIRWISE_FORCES_VECTOR || r == ResultType::PAIRWISE_FORCES_SCALAR || r == ResultType::PUNCTUAL_STRESS;
     }
 
     bool VS_mode(ResultType const& r) const {
-        return r == ResultType::VIRIAL_STRESS or r == ResultType::VIRIAL_STRESS_VON_MISES;
+        return r == ResultType::VIRIAL_STRESS || r == ResultType::VIRIAL_STRESS_VON_MISES;
     }
 
     /// ResultType for atom based forces
