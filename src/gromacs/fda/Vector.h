@@ -33,13 +33,13 @@ public:
 
     bool operator != (Vector const& other) const
     {
-        return v[0] != other.v[0] or v[1] != other.v[1] or v[2] != other.v[2];
+        return v[0] != other.v[0] || v[1] != other.v[1] || v[2] != other.v[2];
     }
 
     template <class Comparer>
     bool equal(Vector const& other, Comparer const& comparer) const
     {
-      return comparer(v[0], other.v[0]) and comparer(v[1], other.v[1]) and comparer(v[2], other.v[2]);
+      return comparer(v[0], other.v[0]) && comparer(v[1], other.v[1]) && comparer(v[2], other.v[2]);
     }
 
     void operator += (Vector const& other)

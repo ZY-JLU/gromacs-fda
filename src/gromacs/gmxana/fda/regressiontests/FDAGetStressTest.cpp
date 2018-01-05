@@ -78,7 +78,7 @@ TEST_P(FDAGetStress, Basic)
     for (std::vector<std::string>::const_iterator iterCur(GetParam().cmdline.begin()), iterNext(GetParam().cmdline.begin() + 1),
         iterEnd(GetParam().cmdline.end()); iterCur != iterEnd; ++iterCur, ++iterNext)
     {
-        if (iterNext == iterEnd or iterNext->substr(0,1) == "-") caller.append(*iterCur);
+        if (iterNext == iterEnd || iterNext->substr(0,1) == "-") caller.append(*iterCur);
         else {
             caller.addOption(iterCur->c_str(), iterNext->c_str());
             ++iterCur, ++iterNext;

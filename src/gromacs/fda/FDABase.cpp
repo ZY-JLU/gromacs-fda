@@ -18,7 +18,7 @@ namespace fda {
 
 template <class Base>
 FDABase<Base>::FDABase(ResultType result_type, int syslen, std::string const& result_filename, FDASettings const& fda_settings)
- : Base(result_type == ResultType::VIRIAL_STRESS or result_type == ResultType::VIRIAL_STRESS_VON_MISES, syslen),
+ : Base(result_type == ResultType::VIRIAL_STRESS || result_type == ResultType::VIRIAL_STRESS_VON_MISES, syslen),
    result_type(result_type),
    syslen(syslen),
    distributed_forces(syslen, fda_settings),
@@ -129,7 +129,7 @@ void FDABase<Base>::write_total_forces(PaddedRVecVector const& x)
 template <class Base>
 void FDABase<Base>::write_compat_header(int nsteps)
 {
-    if (!PF_or_PS_mode() or !compatibility_mode()) return;
+    if (!PF_or_PS_mode() || !compatibility_mode()) return;
 
     result_file << "<begin_block>" << std::endl;
     result_file << "; Forcemat version " << FDASettings::compat_fm_version << std::endl;

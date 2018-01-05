@@ -99,7 +99,7 @@ FDASettings::FDASettings(int nfile, const t_filenm fnm[], gmx_mtop_t *mtop, bool
 
     no_end_zeros = strcasecmp(get_estr(&ninp, &inp, "no_end_zeros", "no"), "no");
 
-    if ((compatibility_mode(atom_based_result_type) or compatibility_mode(residue_based_result_type)) and v2s != Vector2Scalar::NORM)
+    if ((compatibility_mode(atom_based_result_type) || compatibility_mode(residue_based_result_type)) && v2s != Vector2Scalar::NORM)
         gmx_fatal(FARGS, "When using compat mode, pf_vector2scalar should be set to norm.\n");
 
     std::string type_string;
@@ -126,7 +126,7 @@ FDASettings::FDASettings(int nfile, const t_filenm fnm[], gmx_mtop_t *mtop, bool
     }
 
     // Check if using compatibility mode, there should be only one group
-    if (compatibility_mode(atom_based_result_type) or compatibility_mode(residue_based_result_type)) {
+    if (compatibility_mode(atom_based_result_type) || compatibility_mode(residue_based_result_type)) {
         if (name_group1 != name_group2)
             gmx_fatal(FARGS, "When using compat mode, the two group names should the identical.\n");
         else
@@ -171,19 +171,19 @@ FDASettings::FDASettings(int nfile, const t_filenm fnm[], gmx_mtop_t *mtop, bool
         if (one_pair != OnePair::SUMMED)
             gmx_fatal(FARGS, "Can only save scalar time averages from summed interactions.\n");
         if (PF_or_PS_mode(atom_based_result_type)) {
-            if (!(compatibility_mode(atom_based_result_type) or atom_based_result_type == ResultType::PAIRWISE_FORCES_SCALAR))
+            if (!(compatibility_mode(atom_based_result_type) || atom_based_result_type == ResultType::PAIRWISE_FORCES_SCALAR))
                 gmx_fatal(FARGS, "Can only use time averages with scalar or compatibility output.\n");
         }
         if (PF_or_PS_mode(residue_based_result_type)) {
-            if (!(compatibility_mode(residue_based_result_type) or residue_based_result_type == ResultType::PAIRWISE_FORCES_SCALAR))
+            if (!(compatibility_mode(residue_based_result_type) || residue_based_result_type == ResultType::PAIRWISE_FORCES_SCALAR))
                 gmx_fatal(FARGS, "Can only use time averages with scalar or compatibility output.\n");
         }
     }
 
     // Check if groups are defined for PF/PF mode
-    if (PF_or_PS_mode(atom_based_result_type) or PF_or_PS_mode(residue_based_result_type)) {
-        if (sys_in_group1.empty() or sys_in_group2.empty())
-            gmx_fatal(FARGS, "No atoms in one or both groups.\n");
+    if (PF_or_PS_mode(atom_based_result_type) || PF_or_PS_mode(residue_based_result_type)) {
+        if (sys_in_group1.empty() || sys_in_group2.empty())
+            gmx_fatal(FARGS, "No atoms in one || both groups.\n");
     }
 
     // Check that there is an index file
@@ -220,7 +220,7 @@ FDASettings::FDASettings(int nfile, const t_filenm fnm[], gmx_mtop_t *mtop, bool
             gmx_fatal(FARGS, "No file for writing out virial stress.\n");
     }
 
-    if ((stress_mode(atom_based_result_type) or stress_mode(residue_based_result_type)) and (one_pair != OnePair::SUMMED))
+    if ((stress_mode(atom_based_result_type) || stress_mode(residue_based_result_type)) && (one_pair != OnePair::SUMMED))
         gmx_fatal(FARGS, "Per atom data can only be computed from summed interactions.\n");
 
     // Energy groups exclusions

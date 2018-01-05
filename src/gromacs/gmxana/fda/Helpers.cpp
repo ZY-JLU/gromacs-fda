@@ -44,7 +44,7 @@ std::vector<double> parseScalarFileFormat(std::string const& filename,
 		if (foundFrame) {
 			std::istringstream iss(line);
             iss >> i >> j >> value;
-            if (i >= nbParticles or j >= nbParticles)
+            if (i >= nbParticles || j >= nbParticles)
             	gmx_fatal(FARGS, "Index is larger than dimension.");
             array[i*nbParticles+j] = value;
             array[j*nbParticles+i] = value;
@@ -78,7 +78,7 @@ std::vector<double> getAveragedForcematrix(std::string const& filename,
 		}
 		std::istringstream iss(line);
 		iss >> i >> j >> value;
-		if (i < 0 or i >= nbParticles or j < 0 or j >= nbParticles)
+		if (i < 0 || i >= nbParticles || j < 0 || j >= nbParticles)
 			gmx_fatal(FARGS, "Index error in getAveragedForcematrix.");
 		forcematrix[i*nbParticles+j] = value;
 	}
@@ -173,7 +173,7 @@ bool isInteger(std::string const& str)
 
 bool hasExtension(std::string const& str, std::string const& extension)
 {
-	return str.size() > extension.size() and str.compare(str.size() - extension.size(), extension.size(), extension) == 0;
+	return str.size() > extension.size() && str.compare(str.size() - extension.size(), extension.size(), extension) == 0;
 }
 
 FrameType getFrameTypeAndSkipValue(std::string const& frameString, int& value)
@@ -202,7 +202,7 @@ FrameType getFrameTypeAndSkipValue(std::string const& frameString, int& value)
 		if (iterCur != iterEnd) gmx_fatal(FARGS, "Error in frame option.");
 	}
 
-	if (frameType == ALL and value != 1) gmx_fatal(FARGS, "Frame type \"all\" does not expect a number.");
+	if (frameType == ALL && value != 1) gmx_fatal(FARGS, "Frame type \"all\" does not expect a number.");
 
 	return frameType;
 }

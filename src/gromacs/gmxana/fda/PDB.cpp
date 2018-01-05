@@ -25,7 +25,7 @@ PDB::PDB(std::string const& pdbFilename)
     std::string line;
     while (getline(pdbFile, line))
 	{
-        if (line.substr(0,4) == "ATOM" or line.substr(0,6) == "HETATM")
+        if (line.substr(0,4) == "ATOM" || line.substr(0,6) == "HETATM")
         {
 			indices_.push_back(stoi(line.substr(6,5)));
 			Coordinate coord;
@@ -48,7 +48,7 @@ PDB::PDB(std::string const& pdbFilename, std::vector<int> groupAtoms)
     std::vector<int>::const_iterator iterGroupAtoms = groupAtoms.begin();
     while (getline(pdbFile, line))
 	{
-        if (line.substr(0,4) == "ATOM" or line.substr(0,6) == "HETATM")
+        if (line.substr(0,4) == "ATOM" || line.substr(0,6) == "HETATM")
         {
         	if (stoi(line.substr(6,5)) == *iterGroupAtoms + 1)
         	{
@@ -102,7 +102,7 @@ void PDB::writePaths(std::string const& filename, std::vector< std::vector<int> 
 		++numNetwork;
     }
 
-    if (virginValueToLargeForPDB and valueToLargeForPDB) {
+    if (virginValueToLargeForPDB && valueToLargeForPDB) {
         gmx_warning("Force values larger than 999.99 are detected. Therefore, the general PDB format of the b-factor column of Real(6.2) is broken. "
                     "It is tested that it works for Pymol and VMD, but it is not guaranteed that it will work for other visualization programs.");
         virginValueToLargeForPDB = false;
