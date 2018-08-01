@@ -37,8 +37,6 @@ int gmx_fda_convert(int argc, char *argv[])
 
     gmx_output_env_t *oenv;
 
-    t_pargs pa[] = {};
-
     t_filenm fnm[] = {
         { efFDACON, "-i", NULL, ffREAD },
         { efFDACON, "-o", NULL, ffWRITE }
@@ -47,7 +45,7 @@ int gmx_fda_convert(int argc, char *argv[])
 #define NFILE asize(fnm)
 
     if (!parse_common_args(&argc, argv, PCA_CAN_TIME,
-        NFILE, fnm, asize(pa), pa, asize(desc), desc, 0, NULL, &oenv)) return 0;
+        NFILE, fnm, 0, NULL, asize(desc), desc, 0, NULL, &oenv)) return 0;
 
 #ifdef PRINT_DEBUG
         std::cout << "input file = " << opt2fn("-i", NFILE, fnm) << std::endl;
